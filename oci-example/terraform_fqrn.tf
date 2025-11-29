@@ -12,6 +12,19 @@
 locals {
   # Shared infrastructure FQRN maps
 
+  compartment_fqrns = module.compartments.fqrn_map
+
+
+  vcn_fqrns = merge([
+    for k, m in module.vcns : m.fqrn_map
+  ]...)
+
+
+  subnet_fqrns = merge([
+    for k, m in module.subnets : m.fqrn_map
+  ]...)
+
+
 
   # APP1 module FQRN maps
 
@@ -82,6 +95,12 @@ locals {
 
   # Unified FQRN map - merges ALL resources from all applications
   fqrns = merge(
+
+    local.compartment_fqrns,
+
+    local.vcn_fqrns,
+
+    local.subnet_fqrns,
 
 
 

@@ -20,7 +20,7 @@ def extract_modules():
     data = {'shared_modules': [], 'apps': {}}
     
     # Shared modules - trivial: grep for module "name"
-    shared_file = project_root / 'infra_main.tf'
+    shared_file = project_root / 'infra_network.tf'
     if shared_file.exists():
         content = shared_file.read_text()
         for name in re.findall(r'module\s+"([^"]+)"', content):

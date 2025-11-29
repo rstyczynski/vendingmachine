@@ -37,7 +37,7 @@ variable "app2_nsgs" {
 variable "app2_compute_instances" {
   description = "Map of APP2 compute instances, indexed by instance FQRN"
   type = map(object({
-    zone = string                    # Zone map key reference (for AD only, subnet is shared)
+    zone = string                    # Zone map key reference (for subnet, AD)
     nsg  = optional(list(string), []) # NSG FQRN list: nsg://... (co-resource)
     spec = object({
       shape                   = optional(string, "VM.Standard.E4.Flex")

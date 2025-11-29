@@ -38,7 +38,7 @@ variable "app1_compute_instances" {
   description = "Map of APP1 compute instances to create, indexed by instance FQRN (e.g., instance://vm_demo/demo/demo_instance)"
   type = map(object({
     zone = string                    # Zone map key reference (for subnet, AD)
-    nsg  = optional(list(string), []) # NSG FQRN list: nsg://... (co-resource, not part of zone)
+    nsg  = optional(list(string), []) # NSG FQRN list: nsg://... (co-resource)
     spec = object({
       shape                   = optional(string, "VM.Standard.E4.Flex")
       ocpus                   = optional(number, 1)
