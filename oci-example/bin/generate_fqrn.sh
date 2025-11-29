@@ -23,5 +23,5 @@ fi
 # Run the generation script
 echo "Generating terraform_fqrn.tf..."
 cd "${PROJECT_ROOT}"
-"${PYTHON}" "${SCRIPT_DIR}/generate_all_fqrn.py"
+"${PYTHON}" "${SCRIPT_DIR}/generate_fqrn.py"
 

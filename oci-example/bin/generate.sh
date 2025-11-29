@@ -15,13 +15,13 @@ echo ""
 # Generate terraform.tfvars
 echo "1. Generating terraform.tfvars..."
 cd "${PROJECT_ROOT}"
-"${SCRIPT_DIR}/generate_terraform_tfvars.sh"
+"${SCRIPT_DIR}/generate_tfvars.sh"
 echo ""
 
 # Generate terraform_fqrn.tf
 echo "2. Generating terraform_fqrn.tf..."
 cd "${PROJECT_ROOT}"
-"${SCRIPT_DIR}/generate_all_fqrn.sh"
+"${SCRIPT_DIR}/generate_fqrn.sh"
 echo ""
 
 echo "═══════════════════════════════════════════════════════════════"

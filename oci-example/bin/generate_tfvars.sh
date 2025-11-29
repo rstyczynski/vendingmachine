@@ -10,7 +10,7 @@ OUTPUT_FILE="${PROJECT_ROOT}/terraform.tfvars"
 
 # Concatenate all .tfvars files (infra_* and app* patterns, excludes terraform.tfvars)
 cd "${PROJECT_ROOT}"
-cat {infra_*,app*}*.tfvars > "${OUTPUT_FILE}"
+cat $(ls *.tfvars | grep -v terraform.tfvars) > "${OUTPUT_FILE}"
 
 echo "✓ Generated ${OUTPUT_FILE} from separate tfvars files"
 

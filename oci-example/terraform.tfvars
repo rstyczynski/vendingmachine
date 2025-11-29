@@ -1,70 +1,4 @@
 # ═══════════════════════════════════════════════════════════════
-# Infrastructure Configuration
-# Tenancy, region, compartments, VCNs, subnets - shared by all applications
-# ═══════════════════════════════════════════════════════════════
-
-# Tenancies Map
-tenancies = {
-  "tenancy://oc1/avg3" = {
-    description  = "VM Demo Tenancy"
-    tenancy_ocid = "ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a" # Replace with your actual tenancy OCID
-  }
-}
-
-# Selected Tenancy
-tenancy = "tenancy://oc1/avg3"
-
-# Regions Map
-regions = {
-  "region://oc1/eu-zurich-1" = {
-    description = "Zurich Region"
-  }
-}
-
-# Selected Region
-region = "region://oc1/eu-zurich-1"
-
-# Compartments Map
-compartments = {
-  "cmp:///vm_demo/demo" = {
-    description   = "Demo Compartment"
-    enable_delete = false
-  }
-}
-
-# VCNs Map
-vcns = {
-  "vcn://vm_demo/demo/demo_vcn" = {
-    cidr_blocks             = ["10.0.0.0/16"]
-    dns_label               = "demovcn"
-    create_internet_gateway = true
-  }
-}
-
-# Subnets Map
-subnets = {
-  "sub://vm_demo/demo/demo_vcn/public_subnet" = {
-    cidr_block                 = "10.0.1.0/24"
-    dns_label                  = "publicsubnet"
-    prohibit_public_ip_on_vnic = false
-  }
-}
-
-# Shared Zones (Location Contexts)
-zones = {
-  "zone://vm_demo/demo/app" = {
-    #compartment = "cmp://vm_demo/demo"                         # FQRN
-    subnet      = "sub://vm_demo/demo/demo_vcn/public_subnet"   # FQRN
-    ad          = 0                                             # Availability domain
-  }
-  "zone://vm_demo/demo/app2" = {
-    #compartment = "cmp://vm_demo/demo"                         # FQRN
-    subnet      = "sub://vm_demo/demo/demo_vcn/public_subnet"   # FQRN
-    ad          = 0                                             # Availability domain
-  }
-}
-
-# ═══════════════════════════════════════════════════════════════
 # APP1 Configuration
 # ═══════════════════════════════════════════════════════════════
 
@@ -174,6 +108,72 @@ app2_compute_instances = {
       ssh_public_key          = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDi7dWcWn0+ciNUI35ItsmchDxEV8+HyRmVvGVo1I9gbDI7Y+k4KkW1fdls1YfgzuLdah61SLvlnSRjG6D33EmaKL6l9GjzLIFNDPR9InTT2iPBGzm/bVy6jXYBT5+r4Yriw3ggxeudu6vkSxjBzXch3Dgkj58xcHt9qRbVPp9iEnBbBvBEHEuJ+Gnx4xBDhXS/ZXANwAAfgO/Y0SNSzjsOoFCG8diBJ3gT6fyIVrMxVHFk7n21k7Ef4SaYv6uV8xy2rGg3d/ji+AUjQMQircO8uLlNp6PvkpJi2PA/4vebpJETTMfZP/2kVV97Xa8eQEQC4soLQb6V1GlZACKUSDME7im2wEL39KkGJi1EVGSUjXWdk3Y19j+6+mxW5K5zSQezdzFiktl1pA14C/0cio+QN/Pdl02afJjOdvdeaO5CHYUpsXnt1WC3wOOkW9A1SkM8gmB/Af0EhCQLd4y5YWqPQENFW3w1g6l2TMDEv3Npj+eDN92PqmLJ5E6KBp3Hs8JI3+1XAZzJqp3h9+strqVpnb26pBzv8BFeM/kvcmnMCcA4gdtAq4YE4M2dpcalDANtwnSBe8IlO1LimIvFjaRW0JqJteB0dF5j2SpNeEvLbl8RVzwizBJnQiTkLER7E3HeTtzoF8CgTCcUaS+SEPbvLQ2k6wqeOpHDzoCwWO4Obw== rstyczynski@rstyczynski-mac"
       boot_volume_size_in_gbs = 50
     }
+  }
+}
+
+# ═══════════════════════════════════════════════════════════════
+# Infrastructure Configuration
+# Tenancy, region, compartments, VCNs, subnets - shared by all applications
+# ═══════════════════════════════════════════════════════════════
+
+# Tenancies Map
+tenancies = {
+  "tenancy://oc1/avg3" = {
+    description  = "VM Demo Tenancy"
+    tenancy_ocid = "ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a" # Replace with your actual tenancy OCID
+  }
+}
+
+# Selected Tenancy
+tenancy = "tenancy://oc1/avg3"
+
+# Regions Map
+regions = {
+  "region://oc1/eu-zurich-1" = {
+    description = "Zurich Region"
+  }
+}
+
+# Selected Region
+region = "region://oc1/eu-zurich-1"
+
+# Compartments Map
+compartments = {
+  "cmp:///vm_demo/demo" = {
+    description   = "Demo Compartment"
+    enable_delete = false
+  }
+}
+
+# VCNs Map
+vcns = {
+  "vcn://vm_demo/demo/demo_vcn" = {
+    cidr_blocks             = ["10.0.0.0/16"]
+    dns_label               = "demovcn"
+    create_internet_gateway = true
+  }
+}
+
+# Subnets Map
+subnets = {
+  "sub://vm_demo/demo/demo_vcn/public_subnet" = {
+    cidr_block                 = "10.0.1.0/24"
+    dns_label                  = "publicsubnet"
+    prohibit_public_ip_on_vnic = false
+  }
+}
+
+# Shared Zones (Location Contexts)
+zones = {
+  "zone://vm_demo/demo/app" = {
+    #compartment = "cmp://vm_demo/demo"                         # FQRN
+    subnet      = "sub://vm_demo/demo/demo_vcn/public_subnet"   # FQRN
+    ad          = 0                                             # Availability domain
+  }
+  "zone://vm_demo/demo/app2" = {
+    #compartment = "cmp://vm_demo/demo"                         # FQRN
+    subnet      = "sub://vm_demo/demo/demo_vcn/public_subnet"   # FQRN
+    ad          = 0                                             # Availability domain
   }
 }
 
