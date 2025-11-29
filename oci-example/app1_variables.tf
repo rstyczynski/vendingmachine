@@ -1,0 +1,54 @@
+# ═══════════════════════════════════════════════════════════════
+# APP1 Variables
+# ═══════════════════════════════════════════════════════════════
+
+variable "app1_nsgs" {
+  description = "Map of APP1 Network Security Groups, indexed by NSG FQRN"
+  type = map(object({
+    rules = map(object({
+      direction        = string
+      protocol         = string
+      source           = optional(string)
+      source_type      = optional(string)
+      destination      = optional(string)
+      destination_type = optional(string)
+      description      = optional(string)
+      tcp_options = optional(object({
+        destination_port_min = optional(number)
+        destination_port_max = optional(number)
+        source_port_min      = optional(number)
+        source_port_max      = optional(number)
+      }))
+      udp_options = optional(object({
+        destination_port_min = optional(number)
+        destination_port_max = optional(number)
+        source_port_min      = optional(number)
+        source_port_max      = optional(number)
+      }))
+      icmp_options = optional(object({
+        type = number
+        code = optional(number)
+      }))
+    }))
+  }))
+  default = {}
+}
+
+variable "app1_compute_instances" {
+  description = "Map of APP1 compute instances to create, indexed by instance FQRN (e.g., instance://vm_demo/demo/demo_instance)"
+  type = map(object({
+    zone = string                    # Zone map key reference (for subnet, AD)
+    nsg  = optional(list(string), []) # NSG FQRN list: nsg://... (co-resource, not part of zone)
+    spec = object({
+      shape                   = optional(string, "VM.Standard.E4.Flex")
+      ocpus                   = optional(number, 1)
+      memory_in_gbs           = optional(number, 16)
+      assign_public_ip        = optional(bool, true)
+      ssh_public_key          = string
+      source_image_id         = optional(string)
+      boot_volume_size_in_gbs = optional(number, 50)
+    })
+  }))
+  default = {}
+}
+
