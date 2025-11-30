@@ -1,11 +1,42 @@
 #!/bin/bash
 
-terraform output -json fqrn_map | jq -r '.["instance://vm_demo/demo/app3_instance"]' > tmp/vm.ocid
-vm_ocid=$(cat tmp/vm.ocid)
+# arguments:
+# 1. instance ocid
+# 2. bastion ocid
+# 3. session ttl
+# 4. rsa key file priv - default ~/.ssh/id_rsa
+# 5. rsa key file pub - default $private_key.pub
+# 6. host alias in ssh config
 
-terraform output -json fqrn_map | jq -r '.["bastion://vm_demo/demo/demo_bastion"]' > tmp/bastion.ocid
-bastion_ocid=$(cat tmp/bastion.ocid)
+set -euo pipefail
 
+# Get script directory and set tmp directory relative to script (../tmp)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+TMP_DIR="$SCRIPT_DIR/../tmp"
+
+# Parse arguments
+INSTANCE_OCID="${1:?Error: Instance OCID required as first argument}"
+BASTION_OCID="${2:?Error: Bastion OCID required as second argument}"
+SESSION_TTL="${3:-3600}"
+PRIVATE_KEY="${4:-$HOME/.ssh/id_rsa}"
+PUBLIC_KEY="${5:-${PRIVATE_KEY}.pub}"
+HOST_ALIAS="${6:-oci-bastion-host}"
+
+# Validate files exist
+if [[ ! -f "$PRIVATE_KEY" ]]; then
+  echo "Error: Private key file not found: $PRIVATE_KEY" >&2
+  exit 1
+fi
+
+if [[ ! -f "$PUBLIC_KEY" ]]; then
+  echo "Error: Public key file not found: $PUBLIC_KEY" >&2
+  exit 1
+fi
+
+# Create tmp directory if it doesn't exist (relative to script location)
+mkdir -p "$TMP_DIR"
+
+# Create bastion session
 oci bastion session create-managed-ssh \
   --bastion-id $bastion_ocid \
   --target-resource-id $vm_ocid \
