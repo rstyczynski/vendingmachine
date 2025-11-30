@@ -4,8 +4,8 @@
     "bastion-name": "demo_bastion",
     "bastion-public-host-key-info": null,
     "bastion-user-name": "opc",
-    "display-name": "bastionsession2025-11-30-1058",
-    "id": "ocid1.bastionsession.oc1.eu-zurich-1.amaaaaaaknhfuyiaf6ivr4egndj7hysj34fjz7qluvl3j2tlburuevrn2xlq",
+    "display-name": "bastionsession2025-11-30-1106",
+    "id": "ocid1.bastionsession.oc1.eu-zurich-1.amaaaaaaknhfuyiaxzoz2dkaa3v24m24vh66yio7hl7mce6yq6hn7i5vsbra",
     "key-details": {
       "public-key-content": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDi7dWcWn0+ciNUI35ItsmchDxEV8+HyRmVvGVo1I9gbDI7Y+k4KkW1fdls1YfgzuLdah61SLvlnSRjG6D33EmaKL6l9GjzLIFNDPR9InTT2iPBGzm/bVy6jXYBT5+r4Yriw3ggxeudu6vkSxjBzXch3Dgkj58xcHt9qRbVPp9iEnBbBvBEHEuJ+Gnx4xBDhXS/ZXANwAAfgO/Y0SNSzjsOoFCG8diBJ3gT6fyIVrMxVHFk7n21k7Ef4SaYv6uV8xy2rGg3d/ji+AUjQMQircO8uLlNp6PvkpJi2PA/4vebpJETTMfZP/2kVV97Xa8eQEQC4soLQb6V1GlZACKUSDME7im2wEL39KkGJi1EVGSUjXWdk3Y19j+6+mxW5K5zSQezdzFiktl1pA14C/0cio+QN/Pdl02afJjOdvdeaO5CHYUpsXnt1WC3wOOkW9A1SkM8gmB/Af0EhCQLd4y5YWqPQENFW3w1g6l2TMDEv3Npj+eDN92PqmLJ5E6KBp3Hs8JI3+1XAZzJqp3h9+strqVpnb26pBzv8BFeM/kvcmnMCcA4gdtAq4YE4M2dpcalDANtwnSBe8IlO1LimIvFjaRW0JqJteB0dF5j2SpNeEvLbl8RVzwizBJnQiTkLER7E3HeTtzoF8CgTCcUaS+SEPbvLQ2k6wqeOpHDzoCwWO4Obw== rstyczynski@rstyczynski-mac\n"
     },
@@ -14,7 +14,7 @@
     "lifecycle-state": "ACTIVE",
     "session-ttl-in-seconds": 3600,
     "ssh-metadata": {
-      "command": "ssh -i <privateKey> -o ProxyCommand=\"ssh -i <privateKey> -W %h:%p -p 22 ocid1.bastionsession.oc1.eu-zurich-1.amaaaaaaknhfuyiaf6ivr4egndj7hysj34fjz7qluvl3j2tlburuevrn2xlq@host.bastion.eu-zurich-1.oci.oraclecloud.com\" -p 22 opc@10.0.1.81"
+      "command": "ssh -i <privateKey> -o ProxyCommand=\"ssh -i <privateKey> -W %h:%p -p 22 ocid1.bastionsession.oc1.eu-zurich-1.amaaaaaaknhfuyiaxzoz2dkaa3v24m24vh66yio7hl7mce6yq6hn7i5vsbra@host.bastion.eu-zurich-1.oci.oraclecloud.com\" -p 22 opc@10.0.1.81"
     },
     "target-resource-details": {
       "session-type": "MANAGED_SSH",
@@ -24,8 +24,8 @@
       "target-resource-port": 22,
       "target-resource-private-ip-address": "10.0.1.81"
     },
-    "time-created": "2025-11-30T05:36:40.042000+00:00",
-    "time-updated": "2025-11-30T05:37:53.508000+00:00"
+    "time-created": "2025-11-30T08:54:48.269000+00:00",
+    "time-updated": "2025-11-30T08:55:55.560000+00:00"
   },
-  "etag": "cd2d1579b03c95051e855b80ffaf9e25deb3bcc12df2fa09d9e67f007da778cc--gzip"
+  "etag": "afde67e805d8fa3a06f7718adffe581b1a4a4afe21584867eb1cd02e17be3795--gzip"
 }
