@@ -33,8 +33,7 @@ oci-example/
 │   ├── app2_terraform.tfvars # APP2 variable values
 │   └── app2_outputs.tf       # APP2 outputs
 │
-├── terraform.tfvars          # Auto-generated: combines shared + app1 + app2
-└── generate_terraform_tfvars.sh # Script to auto-generate terraform.tfvars
+└── terraform.tfvars          # Auto-generated: combines shared + app1 + app2
 ```
 
 ## 1. Variable Management
@@ -51,7 +50,7 @@ The `terraform.tfvars` file is **auto-generated** by concatenating:
 Run the generation script:
 
 ```bash
-./generate_terraform_tfvars.sh
+./bin/generate_tfvars.sh
 ```
 
 This creates `terraform.tfvars` from the separate files. Terraform automatically loads `terraform.tfvars` but **NOT** other `.tfvars` files unless explicitly specified with `-var-file`.
@@ -301,7 +300,7 @@ Create the following files following the same pattern as APP1/APP2:
 Run the generation script to automatically include APP3:
 
 ```bash
-./bin/generate_all_fqrn.sh
+./bin/generate_fqrn.sh
 ```
 
 Or manually update `terraform_fqrn.tf` (not recommended):
@@ -338,19 +337,13 @@ locals {
 }
 ```
 
-### Step 3: Update Generation Script
-
-Update `generate_terraform_tfvars.sh` to include APP3:
+### Step 3: Regenerate terraform.tfvars
 
 ```bash
-cat "${SCRIPT_DIR}/app3_terraform.tfvars" >> "${OUTPUT_FILE}"
+./bin/generate_tfvars.sh
 ```
 
-### Step 4: Regenerate terraform.tfvars
-
-```bash
-./generate_terraform_tfvars.sh
-```
+Note: The script automatically detects all app*_terraform.tfvars files via glob pattern, so no manual updates needed.
 
 ## 8. Best Practices
 
@@ -363,8 +356,8 @@ cat "${SCRIPT_DIR}/app3_terraform.tfvars" >> "${OUTPUT_FILE}"
 5. **Include all app resources in unified `fqrns` map** (in `terraform_fqrn.tf`) for cross-references
 6. **Use `network_fqrns_base`** when creating NSGs to avoid cycles
 7. **Use `network_fqrns`** (with all NSGs) for compute instances
-8. **Regenerate `terraform_fqrn.tf`** when adding new applications (run `./bin/generate_all_fqrn.sh`)
-9. **Regenerate `terraform.tfvars`** after modifying separate tfvars files
+8. **Regenerate files** when adding new applications (run `./bin/terraform_prepare.sh`)
+9. **Or run individually** - `./bin/generate_fqrn.sh` and `./bin/generate_tfvars.sh`
 
 ### ❌ DON'T:
 
@@ -372,7 +365,7 @@ cat "${SCRIPT_DIR}/app3_terraform.tfvars" >> "${OUTPUT_FILE}"
 2. **Don't create duplicate VCNs/subnets** - share them via `infra_main.tf`
 3. **Don't include app NSGs in `network_fqrns` when creating app NSGs** - causes cycles
 4. **Don't hardcode OCIDs** - always use FQRN resolution
-5. **Don't forget to regenerate `terraform_fqrn.tf`** when adding new applications (run `./bin/generate_all_fqrn.sh`)
+5. **Don't forget to regenerate files** when adding new applications (run `./bin/terraform_prepare.sh`)
 6. **Don't mix shared and app-specific resources** in the same file
 
 ## 9. Troubleshooting
@@ -400,7 +393,7 @@ cat "${SCRIPT_DIR}/app3_terraform.tfvars" >> "${OUTPUT_FILE}"
 **Cause**: Variables not loaded - `terraform.tfvars` not regenerated
 
 **Solution**:
-- Run `./generate_terraform_tfvars.sh` to regenerate `terraform.tfvars` from separate files
+- Run `./bin/generate_tfvars.sh` to regenerate `terraform.tfvars` from separate files
 
 ## 10. Example: Complete Multi-App Setup
 
@@ -430,7 +423,7 @@ See the current configuration:
 - `app2_outputs.tf` - APP2 outputs
 
 **Auto-Generated**:
-- `terraform.tfvars` - Combined from shared + app1 + app2 (via `generate_terraform_tfvars.sh`)
+- `terraform.tfvars` - Combined from shared + app1 + app2 (via `bin/generate_tfvars.sh`)
 
 All applications share:
 - Compartment: `cmp:///vm_demo/demo` (from `infra_main.tf`)
