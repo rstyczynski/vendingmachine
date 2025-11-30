@@ -3,10 +3,8 @@ module "app1_compute_instances" {
   for_each = var.app1_compute_instances
 
   instance_fqrn = each.key # Instance FQRN is the map key (e.g., "instance://vm_demo/demo/demo_instance")
-  zone = {
-    subnet = var.zones[each.value.zone].subnet
-    ad     = var.zones[each.value.zone].ad
-  }
+  zone          = var.zones[each.value.zone].subnet # Zone is subnet FQRN
+  availability_domain = var.zones[each.value.zone].ad
   nsg                     = each.value.nsg # NSG as co-resource
   spec                    = each.value.spec
   fqrn_map                = local.network_fqrns  # Includes VCN, subnet, main NSGs, and APP2 NSGs (from fqrn.tf)

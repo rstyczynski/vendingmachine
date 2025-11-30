@@ -21,17 +21,71 @@ _bastion_ssh_config_complete() {
   
   # Complete based on previous option
   case "${prev}" in
-    --private-key|--public-key)
-      # Complete with file paths
-      COMPREPLY=($(compgen -f -- ${cur}))
+    --private-key)
+      # Complete with file paths, with preference for ~/.ssh directory
+      # Also suggest auto-generated key names if host-alias was set
+      local host_alias=""
+      local i
+      for ((i=1; i<${#COMP_WORDS[@]}; i++)); do
+        if [[ "${COMP_WORDS[i]}" == "--host-alias" && $((i+1)) -lt ${#COMP_WORDS[@]} ]]; then
+          host_alias="${COMP_WORDS[i+1]}"
+          break
+        elif [[ "${COMP_WORDS[i]}" =~ ^--host-alias= ]]; then
+          host_alias="${COMP_WORDS[i]#*=}"
+          break
+        fi
+      done
+      
+      # If host-alias is set, suggest the auto-generated key name
+      if [[ -n "$host_alias" && -d ~/.ssh ]]; then
+        local auto_key="$HOME/.ssh/${host_alias}_one_time"
+        if [[ -f "$auto_key" && "$cur" == "" ]]; then
+          COMPREPLY=("$auto_key")
+        fi
+      fi
+      
+      # Also complete with existing files (especially in ~/.ssh)
+      COMPREPLY+=($(compgen -f -- ${cur}))
+      
+      # If cur starts with ~, expand it
+      if [[ ${cur} == ~* ]]; then
+        local expanded
+        expanded=$(eval echo "$cur" 2>/dev/null)
+        if [[ -n "$expanded" ]]; then
+          COMPREPLY+=($(compgen -f -- "$expanded"))
+        fi
+      fi
+      
+      return 0
+      ;;
+    --public-key)
+      # Complete with file paths, prefer .pub files
+      COMPREPLY=($(compgen -f -X '!*.pub' -- ${cur}))
+      # Also complete all files if no .pub matches
+      if [[ ${#COMPREPLY[@]} -eq 0 ]]; then
+        COMPREPLY=($(compgen -f -- ${cur}))
+      fi
       return 0
       ;;
     --instance-ocid|--bastion-ocid)
-      # These typically start with "ocid1."
-      if [[ ${cur} == ocid1.* ]]; then
+      # These can be OCIDs (ocid1.*) or FQRNs (scheme://...)
+      if [[ ${cur} == ocid1.* ]] || [[ ${cur} == *://* ]]; then
         # Don't complete, let user type
         COMPREPLY=()
         return 0
+      fi
+      # Suggest FQRN schemes if starting with a scheme
+      if [[ ${cur} == instance://* ]] || [[ ${cur} == bastion://* ]]; then
+        COMPREPLY=()
+        return 0
+      fi
+      # If starting fresh, suggest FQRN format
+      if [[ ${cur} == "" ]]; then
+        if [[ "${prev}" == "--instance-ocid" ]]; then
+          COMPREPLY=("instance://")
+        elif [[ "${prev}" == "--bastion-ocid" ]]; then
+          COMPREPLY=("bastion://")
+        fi
       fi
       ;;
     --session-ttl)
@@ -46,7 +100,17 @@ _bastion_ssh_config_complete() {
       ;;
     --host-alias)
       # Suggest common host aliases
-      COMPREPLY=($(compgen -W "oci-bastion-host bastion oci-host" -- ${cur}))
+      # Also check for existing _one_time keys in ~/.ssh
+      local existing_aliases=("oci-bastion-host" "bastion" "oci-host")
+      if [[ -d ~/.ssh ]]; then
+        while IFS= read -r keyfile; do
+          if [[ "$keyfile" =~ _one_time$ ]]; then
+            local alias_name="${keyfile%_one_time}"
+            existing_aliases+=("$alias_name")
+          fi
+        done < <(ls -1 ~/.ssh/*_one_time 2>/dev/null | xargs -n1 basename 2>/dev/null)
+      fi
+      COMPREPLY=($(compgen -W "${existing_aliases[*]}" -- ${cur}))
       return 0
       ;;
   esac

@@ -1,20 +1,20 @@
 {
   "data": {
     "compartment-id": "ocid1.compartment.oc1..aaaaaaaa3ze5cwuso2kggf7isu4bm5ue523jov5nul6insm6iouy2iiq7qla",
-    "id": "ocid1.bastionworkrequest.oc1.eu-zurich-1.amaaaaaaknhfuyiabhfnbtpth7relcpqj2w7mdx3upjk2agvrx7dulhe542q",
+    "id": "ocid1.bastionworkrequest.oc1.eu-zurich-1.amaaaaaaknhfuyia42gukdcs3byu3be2o6itcuzkzlmgqsn2wzsbeencxbxa",
     "operation-type": "CREATE_SESSION",
     "percent-complete": 100.0,
     "resources": [
       {
         "action-type": "CREATED",
         "entity-type": "SessionResource",
-        "entity-uri": "/sessions/ocid1.bastionsession.oc1.eu-zurich-1.amaaaaaaknhfuyiaxzoz2dkaa3v24m24vh66yio7hl7mce6yq6hn7i5vsbra",
-        "identifier": "ocid1.bastionsession.oc1.eu-zurich-1.amaaaaaaknhfuyiaxzoz2dkaa3v24m24vh66yio7hl7mce6yq6hn7i5vsbra"
+        "entity-uri": "/sessions/ocid1.bastionsession.oc1.eu-zurich-1.amaaaaaaknhfuyiayolvolkl2f77bs32mu3o2aaotezjxabbk73ajwmasffq",
+        "identifier": "ocid1.bastionsession.oc1.eu-zurich-1.amaaaaaaknhfuyiayolvolkl2f77bs32mu3o2aaotezjxabbk73ajwmasffq"
       }
     ],
     "status": "SUCCEEDED",
-    "time-accepted": "2025-11-30T08:54:48.273000+00:00",
-    "time-finished": "2025-11-30T08:55:55.560000+00:00",
-    "time-started": "2025-11-30T08:54:50.981000+00:00"
+    "time-accepted": "2025-11-30T10:59:26.912000+00:00",
+    "time-finished": "2025-11-30T11:00:45.839000+00:00",
+    "time-started": "2025-11-30T10:59:39.278000+00:00"
   }
 }

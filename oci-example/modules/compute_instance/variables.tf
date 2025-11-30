@@ -4,11 +4,8 @@ variable "instance_fqrn" {
 }
 
 variable "zone" {
-  description = "Zone (location context) with FQRNs (subnet, AD - compartment derived from instance_fqrn)"
-  type = object({
-    subnet = string # FQRN: sub://...
-    ad     = number # Availability domain: 0, 1, or 2
-  })
+  description = "Zone FQRN (subnet FQRN, e.g., sub://cmp_path/vcn_name/subnet_name)"
+  type        = string # FQRN: zone://...
 }
 
 variable "nsg" {
@@ -35,6 +32,11 @@ variable "spec" {
     boot_volume_size_in_gbs = optional(number, 50)
     enable_bastion_plugin   = optional(bool, false) # Enable Oracle Cloud Agent Bastion plugin
   })
+}
+
+variable "availability_domain" {
+  description = "Availability domain number (0, 1, or 2)"
+  type        = number
 }
 
 variable "availability_domain_name" {

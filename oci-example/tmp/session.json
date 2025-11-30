@@ -4,17 +4,17 @@
     "bastion-name": "demo_bastion",
     "bastion-public-host-key-info": null,
     "bastion-user-name": "opc",
-    "display-name": "bastionsession2025-11-30-1106",
-    "id": "ocid1.bastionsession.oc1.eu-zurich-1.amaaaaaaknhfuyiaxzoz2dkaa3v24m24vh66yio7hl7mce6yq6hn7i5vsbra",
+    "display-name": "bastionsession2025-11-30-1316",
+    "id": "ocid1.bastionsession.oc1.eu-zurich-1.amaaaaaaknhfuyiayolvolkl2f77bs32mu3o2aaotezjxabbk73ajwmasffq",
     "key-details": {
-      "public-key-content": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDi7dWcWn0+ciNUI35ItsmchDxEV8+HyRmVvGVo1I9gbDI7Y+k4KkW1fdls1YfgzuLdah61SLvlnSRjG6D33EmaKL6l9GjzLIFNDPR9InTT2iPBGzm/bVy6jXYBT5+r4Yriw3ggxeudu6vkSxjBzXch3Dgkj58xcHt9qRbVPp9iEnBbBvBEHEuJ+Gnx4xBDhXS/ZXANwAAfgO/Y0SNSzjsOoFCG8diBJ3gT6fyIVrMxVHFk7n21k7Ef4SaYv6uV8xy2rGg3d/ji+AUjQMQircO8uLlNp6PvkpJi2PA/4vebpJETTMfZP/2kVV97Xa8eQEQC4soLQb6V1GlZACKUSDME7im2wEL39KkGJi1EVGSUjXWdk3Y19j+6+mxW5K5zSQezdzFiktl1pA14C/0cio+QN/Pdl02afJjOdvdeaO5CHYUpsXnt1WC3wOOkW9A1SkM8gmB/Af0EhCQLd4y5YWqPQENFW3w1g6l2TMDEv3Npj+eDN92PqmLJ5E6KBp3Hs8JI3+1XAZzJqp3h9+strqVpnb26pBzv8BFeM/kvcmnMCcA4gdtAq4YE4M2dpcalDANtwnSBe8IlO1LimIvFjaRW0JqJteB0dF5j2SpNeEvLbl8RVzwizBJnQiTkLER7E3HeTtzoF8CgTCcUaS+SEPbvLQ2k6wqeOpHDzoCwWO4Obw== rstyczynski@rstyczynski-mac\n"
+      "public-key-content": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDrYd4J8on7ugp4l5HTxHs6DV2qOQcliJC72jKuaOIBlL0zhIOEAEcAhkiOocc3lqMe+TB6XlwkVpVBtpnuvlsyKTgLmu8QWJ7RO7l1bX53XZYia5ki6BLnwTagq2Iu61GqDS4KMKz8qSXhJm66G4EyHTk0o8yOALOtPYT31BJn1p9qO81HDqzNtG+sV5D5iLLK+5giuZYWaP3VmrxaBXBxw/zL23sMYut4gBT1Z4eypB9wQ/wKI0QHCdD06HnIhVkqM+R93HEFaXENYMSUWQAogU4x0dI1nxREvA6zoNX5IX8Pt2bWp3Cwa5jKYDdDfiqL8EeYL9xs2QJadg0nh0rlj4xxikG/oXfFTdyAKUF0mV7qKZ0+MjrwiZxHqHcWTNFIMzsT7SAZD0y/8mwucP3lCq9omkRZrh/KbsFIooiUNBK69CAp/j6LupMc40RlrLO+v6eTaBheCMXpj52G7HJV9MIkxXUuKLoBRCjQ+XYdy8OZpfl5vXwCzOaskmxLLqFnv6hxJP3fN4OWDcr7ewq08lj5dYNAD7HJ9CjcaMVsEEwFWQ/cVAquOCdVyWHrwxO0YyQnAlRdFDlRiAJk8sleV0GpwYq8PZslycSJOG6ZJ3pPn3fyV2UOUiqYRU3fxD+w7iTYCnQ8OpZfvw7GAJujJ3I9bnby1wh1UUELdv/fFw== one-time-key-for-oci-bastion-host\n"
     },
     "key-type": "PUB",
     "lifecycle-details": null,
     "lifecycle-state": "ACTIVE",
     "session-ttl-in-seconds": 3600,
     "ssh-metadata": {
-      "command": "ssh -i <privateKey> -o ProxyCommand=\"ssh -i <privateKey> -W %h:%p -p 22 ocid1.bastionsession.oc1.eu-zurich-1.amaaaaaaknhfuyiaxzoz2dkaa3v24m24vh66yio7hl7mce6yq6hn7i5vsbra@host.bastion.eu-zurich-1.oci.oraclecloud.com\" -p 22 opc@10.0.1.81"
+      "command": "ssh -i <privateKey> -o ProxyCommand=\"ssh -i <privateKey> -W %h:%p -p 22 ocid1.bastionsession.oc1.eu-zurich-1.amaaaaaaknhfuyiayolvolkl2f77bs32mu3o2aaotezjxabbk73ajwmasffq@host.bastion.eu-zurich-1.oci.oraclecloud.com\" -p 22 opc@10.0.1.81"
     },
     "target-resource-details": {
       "session-type": "MANAGED_SSH",
@@ -24,8 +24,8 @@
       "target-resource-port": 22,
       "target-resource-private-ip-address": "10.0.1.81"
     },
-    "time-created": "2025-11-30T08:54:48.269000+00:00",
-    "time-updated": "2025-11-30T08:55:55.560000+00:00"
+    "time-created": "2025-11-30T10:59:26.909000+00:00",
+    "time-updated": "2025-11-30T11:00:45.839000+00:00"
   },
-  "etag": "afde67e805d8fa3a06f7718adffe581b1a4a4afe21584867eb1cd02e17be3795--gzip"
+  "etag": "4fe39266465b3742b13a75173d099fb37a94bcc101e7c4aa8f8a6808d442b718--gzip"
 }

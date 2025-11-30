@@ -6,7 +6,7 @@
 #   --instance-ocid OCID|FQRN      Instance OCID or FQRN (e.g., instance://path/name) (required)
 #   --bastion-ocid OCID|FQRN      Bastion OCID or FQRN (e.g., bastion://path/name) (required)
 #   --session-ttl SECONDS          Session TTL in seconds (default: 3600)
-#   --private-key PATH             Private key file path (default: ~/.ssh/id_rsa)
+#   --private-key PATH             Private key file path (default: auto-generated as ~/.ssh/<host-alias>_one_time)
 #   --public-key PATH              Public key file path (default: <private-key>.pub)
 #   --host-alias NAME              SSH config host alias (default: oci-bastion-host)
 #   --target-os-username USER      Target OS username (default: opc)
@@ -21,12 +21,13 @@ mkdir -p "$TMP_DIR"
 
 # Default values
 SESSION_TTL="3600"
-PRIVATE_KEY="$HOME/.ssh/id_rsa"
+PRIVATE_KEY=""  # Will be set to auto-generated key based on host-alias
 PUBLIC_KEY=""
 HOST_ALIAS="oci-bastion-host"
 TARGET_OS_USERNAME="opc"
 INSTANCE_OCID=""
 BASTION_OCID=""
+USE_AUTO_KEY=true  # Track if we should auto-generate key
 
 # Parse named arguments
 while [[ $# -gt 0 ]]; do
@@ -57,10 +58,12 @@ while [[ $# -gt 0 ]]; do
       ;;
     --private-key)
       PRIVATE_KEY="$2"
+      USE_AUTO_KEY=false  # User specified a key, don't auto-generate
       shift 2
       ;;
     --private-key=*)
       PRIVATE_KEY="${1#*=}"
+      USE_AUTO_KEY=false  # User specified a key, don't auto-generate
       shift
       ;;
     --public-key)
@@ -105,9 +108,28 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Set default public key if not provided
-if [[ -z "$PUBLIC_KEY" ]]; then
+# Auto-generate RSA key if not specified
+if [[ "$USE_AUTO_KEY" == true ]]; then
+  # Generate key name based on host alias
+  PRIVATE_KEY="$HOME/.ssh/${HOST_ALIAS}_one_time"
   PUBLIC_KEY="${PRIVATE_KEY}.pub"
+  
+  # Generate key if it doesn't exist
+  if [[ ! -f "$PRIVATE_KEY" ]]; then
+    echo "Generating one-time RSA key pair: $PRIVATE_KEY" >&2
+    mkdir -p ~/.ssh
+    ssh-keygen -t rsa -b 4096 -f "$PRIVATE_KEY" -N "" -C "one-time-key-for-${HOST_ALIAS}"
+    chmod 600 "$PRIVATE_KEY"
+    chmod 644 "$PUBLIC_KEY"
+    echo "Generated key pair: $PRIVATE_KEY" >&2
+  else
+    echo "Using existing one-time key: $PRIVATE_KEY" >&2
+  fi
+else
+  # Set default public key if not provided and using custom key
+  if [[ -z "$PUBLIC_KEY" ]]; then
+    PUBLIC_KEY="${PRIVATE_KEY}.pub"
+  fi
 fi
 
 # Validate required arguments

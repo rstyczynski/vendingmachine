@@ -313,3 +313,9 @@ oci-example/
 2. ✅ Review module FQRN resolution pattern
 3. Add FQRN resolver module for existing resources
 4. Implement dual-input pattern (existing vs new resources)
+
+## VM connect  
+
+```bash
+./bin/bastion_ssh_config.sh --instance-ocid "instance://vm_demo/demo/app3_instance" --bastion-ocid "bastion://vm_demo/demo/demo_bastion"
+```

@@ -11,7 +11,7 @@ locals {
 
   # Resolve FQRNs to OCIDs
   compartment_id = var.fqrn_map[local.compartment_fqrn]
-  subnet_id      = var.fqrn_map[var.zone.subnet]
+  subnet_id      = var.fqrn_map[var.zone] # zone is now a subnet FQRN string
   # Handle empty NSG list and missing NSG FQRNs gracefully (filter out nulls)
   nsg_ids        = [for nsg_fqrn in var.nsg : var.fqrn_map[nsg_fqrn] if contains(keys(var.fqrn_map), nsg_fqrn)]
 }
