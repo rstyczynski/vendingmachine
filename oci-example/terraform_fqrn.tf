@@ -42,13 +42,9 @@ locals {
   app3_compute_instances_fqrns = merge([
     for k, m in module.app3_compute_instances : m.fqrn_map
   ]...)
-  # WEB1 module FQRN maps
-  web1_compute_instances_fqrns = merge([
-    for k, m in module.web1_compute_instances : m.fqrn_map
-  ]...)
-  # WEB2 module FQRN maps
-  web2_compute_instances_fqrns = merge([
-    for k, m in module.web2_compute_instances : m.fqrn_map
+  # APP4 module FQRN maps
+  app4_compute_instances_fqrns = merge([
+    for k, m in module.app4_compute_instances : m.fqrn_map
   ]...)
   # Combined FQRN maps for layer dependencies
   compartment_and_vcn_fqrns = merge(
@@ -87,8 +83,7 @@ locals {
     local.app2_compute_instances_fqrns,
     local.app2_nsgs_fqrns,
     local.app3_compute_instances_fqrns,
-    local.web1_compute_instances_fqrns,
-    local.web2_compute_instances_fqrns,
+    local.app4_compute_instances_fqrns,
   )
 
   # Unified FQRN map for output (alias)

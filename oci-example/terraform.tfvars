@@ -16,6 +16,24 @@ app1_compute_instances = {
       boot_volume_size_in_gbs = 50
       enable_bastion_plugin   = true
     }
+  },
+  "instance://vm_demo/demo/demo_instance2" = {
+    zone = "zone://vm_demo/demo/app" # Zone map key reference (for subnet, AD)
+    
+    nsg  = [
+      "nsg://vm_demo/demo/demo_vcn/ssh", 
+      "nsg://vm_demo/demo/demo_vcn/app2_web"
+    ] # NSG FQRN list (co-resource, not part of zone) - can reference APP2 NSGs
+
+    spec = {
+      shape                   = "VM.Standard.E4.Flex"
+      ocpus                   = 1
+      memory_in_gbs           = 16
+      assign_public_ip        = false  # Subnet prohibits public IPs - use NAT gateway or Bastion for access
+      ssh_public_key          = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDi7dWcWn0+ciNUI35ItsmchDxEV8+HyRmVvGVo1I9gbDI7Y+k4KkW1fdls1YfgzuLdah61SLvlnSRjG6D33EmaKL6l9GjzLIFNDPR9InTT2iPBGzm/bVy6jXYBT5+r4Yriw3ggxeudu6vkSxjBzXch3Dgkj58xcHt9qRbVPp9iEnBbBvBEHEuJ+Gnx4xBDhXS/ZXANwAAfgO/Y0SNSzjsOoFCG8diBJ3gT6fyIVrMxVHFk7n21k7Ef4SaYv6uV8xy2rGg3d/ji+AUjQMQircO8uLlNp6PvkpJi2PA/4vebpJETTMfZP/2kVV97Xa8eQEQC4soLQb6V1GlZACKUSDME7im2wEL39KkGJi1EVGSUjXWdk3Y19j+6+mxW5K5zSQezdzFiktl1pA14C/0cio+QN/Pdl02afJjOdvdeaO5CHYUpsXnt1WC3wOOkW9A1SkM8gmB/Af0EhCQLd4y5YWqPQENFW3w1g6l2TMDEv3Npj+eDN92PqmLJ5E6KBp3Hs8JI3+1XAZzJqp3h9+strqVpnb26pBzv8BFeM/kvcmnMCcA4gdtAq4YE4M2dpcalDANtwnSBe8IlO1LimIvFjaRW0JqJteB0dF5j2SpNeEvLbl8RVzwizBJnQiTkLER7E3HeTtzoF8CgTCcUaS+SEPbvLQ2k6wqeOpHDzoCwWO4Obw== rstyczynski@rstyczynski-mac"
+      boot_volume_size_in_gbs = 50
+      enable_bastion_plugin   = true
+    }
   }
 }
 
@@ -118,9 +136,30 @@ app3_compute_instances = {
     }
   }
 }
+# ═══════════════════════════════════════════════════════════════
+# APP4 Compute Instances Configuration
+# ═══════════════════════════════════════════════════════════════
+
+app4_compute_instances = {
+  "instance://vm_demo/demo2/app4_instance" = {
+    zone = "zone://vm_demo/demo/app" # Zone map key reference (for subnet, AD)
+    
+    nsg  = [] # NSG FQRN list (co-resource) - can reference any app NSGs
+
+    spec = {
+      shape                   = "VM.Standard.E4.Flex"
+      ocpus                   = 1
+      memory_in_gbs           = 16
+      assign_public_ip        = false
+      ssh_public_key          = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDi7dWcWn0+ciNUI35ItsmchDxEV8+HyRmVvGVo1I9gbDI7Y+k4KkW1fdls1YfgzuLdah61SLvlnSRjG6D33EmaKL6l9GjzLIFNDPR9InTT2iPBGzm/bVy6jXYBT5+r4Yriw3ggxeudu6vkSxjBzXch3Dgkj58xcHt9qRbVPp9iEnBbBvBEHEuJ+Gnx4xBDhXS/ZXANwAAfgO/Y0SNSzjsOoFCG8diBJ3gT6fyIVrMxVHFk7n21k7Ef4SaYv6uV8xy2rGg3d/ji+AUjQMQircO8uLlNp6PvkpJi2PA/4vebpJETTMfZP/2kVV97Xa8eQEQC4soLQb6V1GlZACKUSDME7im2wEL39KkGJi1EVGSUjXWdk3Y19j+6+mxW5K5zSQezdzFiktl1pA14C/0cio+QN/Pdl02afJjOdvdeaO5CHYUpsXnt1WC3wOOkW9A1SkM8gmB/Af0EhCQLd4y5YWqPQENFW3w1g6l2TMDEv3Npj+eDN92PqmLJ5E6KBp3Hs8JI3+1XAZzJqp3h9+strqVpnb26pBzv8BFeM/kvcmnMCcA4gdtAq4YE4M2dpcalDANtwnSBe8IlO1LimIvFjaRW0JqJteB0dF5j2SpNeEvLbl8RVzwizBJnQiTkLER7E3HeTtzoF8CgTCcUaS+SEPbvLQ2k6wqeOpHDzoCwWO4Obw== rstyczynski@rstyczynski-mac"
+      boot_volume_size_in_gbs = 50
+      enable_bastion_plugin   = false # Enable Oracle Cloud Agent Bastion plugin for secure access
+    }
+  }
+}
 bastions = {
   "bastion://vm_demo/demo/demo_bastion" = {
-    target_subnet_fqrn            = "sub://vm_demo/demo/demo_vcn/public_subnet" # Subnet FQRN that bastion connects to
+    target_subnet_fqrn            = "sub://vm_demo/demo/demo_vcn/subnet" # Subnet FQRN that bastion connects to
     bastion_type                   = "STANDARD"                                  # Type of bastion
     client_cidr_block_allow_list   = ["0.0.0.0/0"]                                          # Empty list allows all (or specify CIDR blocks)
     max_session_ttl_in_seconds     = 10800                                       # 3 hours
@@ -133,18 +172,22 @@ compartments = {
   "cmp:///vm_demo/demo" = {
     description   = "Demo Compartment"
     enable_delete = false
+  },
+  "cmp:///vm_demo/demo2" = {
+    description   = "Demo Compartment"
+    enable_delete = false
   }
 }
 
 zones = {
   "zone://vm_demo/demo/app" = {
     #compartment = "cmp://vm_demo/demo"                         # FQRN
-    subnet      = "sub://vm_demo/demo/demo_vcn/public_subnet"   # FQRN
+    subnet      = "sub://vm_demo/demo/demo_vcn/subnet"   # FQRN
     ad          = 0                                             # Availability domain
   }
   "zone://vm_demo/demo/app2" = {
     #compartment = "cmp://vm_demo/demo"                         # FQRN
-    subnet      = "sub://vm_demo/demo/demo_vcn/public_subnet"   # FQRN
+    subnet      = "sub://vm_demo/demo/demo_vcn/subnet"   # FQRN
     ad          = 0                                             # Availability domain
   }
 }
@@ -167,7 +210,7 @@ vcns = {
 
 # Subnets Map
 subnets = {
-  "sub://vm_demo/demo/demo_vcn/public_subnet" = {
+  "sub://vm_demo/demo/demo_vcn/subnet" = {
     cidr_block                 = "10.0.1.0/24"
     dns_label                  = "publicsubnet"
     prohibit_public_ip_on_vnic = true
@@ -175,6 +218,8 @@ subnets = {
     flow_log_log_group_fqrn    = "log_group://vm_demo/demo/demo_log_group"
   }
 }
+
+
 tenancy = "tenancy://oc1/avg3"
 region = "region://oc1/eu-zurich-1"
 
@@ -188,47 +233,5 @@ tenancies = {
 regions = {
   "region://oc1/eu-zurich-1" = {
     description = "Zurich Region"
-  }
-}
-# ═══════════════════════════════════════════════════════════════
-# WEB1 Compute Instances Configuration
-# ═══════════════════════════════════════════════════════════════
-
-web1_compute_instances = {
-  "instance://vm_demo/demo/web1_instance" = {
-    zone = "zone://vm_demo/demo/app" # Zone map key reference (for subnet, AD)
-    
-    nsg  = [] # NSG FQRN list (co-resource) - can reference any app NSGs
-
-    spec = {
-      shape                   = "VM.Standard.E4.Flex"
-      ocpus                   = 1
-      memory_in_gbs           = 16
-      assign_public_ip        = false
-      ssh_public_key          = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDi7dWcWn0+ciNUI35ItsmchDxEV8+HyRmVvGVo1I9gbDI7Y+k4KkW1fdls1YfgzuLdah61SLvlnSRjG6D33EmaKL6l9GjzLIFNDPR9InTT2iPBGzm/bVy6jXYBT5+r4Yriw3ggxeudu6vkSxjBzXch3Dgkj58xcHt9qRbVPp9iEnBbBvBEHEuJ+Gnx4xBDhXS/ZXANwAAfgO/Y0SNSzjsOoFCG8diBJ3gT6fyIVrMxVHFk7n21k7Ef4SaYv6uV8xy2rGg3d/ji+AUjQMQircO8uLlNp6PvkpJi2PA/4vebpJETTMfZP/2kVV97Xa8eQEQC4soLQb6V1GlZACKUSDME7im2wEL39KkGJi1EVGSUjXWdk3Y19j+6+mxW5K5zSQezdzFiktl1pA14C/0cio+QN/Pdl02afJjOdvdeaO5CHYUpsXnt1WC3wOOkW9A1SkM8gmB/Af0EhCQLd4y5YWqPQENFW3w1g6l2TMDEv3Npj+eDN92PqmLJ5E6KBp3Hs8JI3+1XAZzJqp3h9+strqVpnb26pBzv8BFeM/kvcmnMCcA4gdtAq4YE4M2dpcalDANtwnSBe8IlO1LimIvFjaRW0JqJteB0dF5j2SpNeEvLbl8RVzwizBJnQiTkLER7E3HeTtzoF8CgTCcUaS+SEPbvLQ2k6wqeOpHDzoCwWO4Obw== rstyczynski@rstyczynski-mac"
-      boot_volume_size_in_gbs = 50
-      enable_bastion_plugin   = true
-    }
-  }
-}
-# ═══════════════════════════════════════════════════════════════
-# WEB2 Compute Instances Configuration
-# ═══════════════════════════════════════════════════════════════
-
-web2_compute_instances = {
-  "instance://vm_demo/demo/web2_instance" = {
-    zone = "zone://vm_demo/demo/app" # Zone map key reference (for subnet, AD)
-    
-    nsg  = [] # NSG FQRN list (co-resource) - can reference any app NSGs
-
-    spec = {
-      shape                   = "VM.Standard.E4.Flex"
-      ocpus                   = 1
-      memory_in_gbs           = 16
-      assign_public_ip        = true
-      ssh_public_key          = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDi7dWcWn0+ciNUI35ItsmchDxEV8+HyRmVvGVo1I9gbDI7Y+k4KkW1fdls1YfgzuLdah61SLvlnSRjG6D33EmaKL6l9GjzLIFNDPR9InTT2iPBGzm/bVy6jXYBT5+r4Yriw3ggxeudu6vkSxjBzXch3Dgkj58xcHt9qRbVPp9iEnBbBvBEHEuJ+Gnx4xBDhXS/ZXANwAAfgO/Y0SNSzjsOoFCG8diBJ3gT6fyIVrMxVHFk7n21k7Ef4SaYv6uV8xy2rGg3d/ji+AUjQMQircO8uLlNp6PvkpJi2PA/4vebpJETTMfZP/2kVV97Xa8eQEQC4soLQb6V1GlZACKUSDME7im2wEL39KkGJi1EVGSUjXWdk3Y19j+6+mxW5K5zSQezdzFiktl1pA14C/0cio+QN/Pdl02afJjOdvdeaO5CHYUpsXnt1WC3wOOkW9A1SkM8gmB/Af0EhCQLd4y5YWqPQENFW3w1g6l2TMDEv3Npj+eDN92PqmLJ5E6KBp3Hs8JI3+1XAZzJqp3h9+strqVpnb26pBzv8BFeM/kvcmnMCcA4gdtAq4YE4M2dpcalDANtwnSBe8IlO1LimIvFjaRW0JqJteB0dF5j2SpNeEvLbl8RVzwizBJnQiTkLER7E3HeTtzoF8CgTCcUaS+SEPbvLQ2k6wqeOpHDzoCwWO4Obw== rstyczynski@rstyczynski-mac"
-      boot_volume_size_in_gbs = 50
-      enable_bastion_plugin   = false # Enable Oracle Cloud Agent Bastion plugin for secure access
-    }
   }
 }

@@ -1,26 +1,23 @@
 # ═══════════════════════════════════════════════════════════════
-# Custom Variable Proxy Layer: WEB2 Compute Instances
+# Custom Variable Proxy Layer: APP2 Compute Instances
 # 
-# This file is OPTIONAL. Copy this file to web2_compute_var2hcl_custom.tf
-# and customize the var2hcl transformation logic as needed.
-#
-# When this file exists and defines web2_compute_instances_var2hcl_custom_override,
-# it will override the default var2hcl logic from web2_compute_var2hcl.tf
+# This file is OPTIONAL. If this file exists, it will override the
+# default var2hcl logic from app2_compute.tf
 # ═══════════════════════════════════════════════════════════════
 
 locals {
-  # Custom proxy layer: Transform WEB2 compute instance variables into locals
-  # This will override the default var2hcl logic from web2_compute_var2hcl.tf
+  # Custom proxy layer: Transform APP2 compute instance variables into locals
+  # This will override the default var2hcl logic from app2_compute.tf
   # 
   # Add your custom transformation logic here:
   # - Transform values (e.g., normalize, uppercase, add defaults)
   # - Add computed fields
   # - Apply business logic rules
   # - Merge with additional data sources
-  web2_compute_instances_var2hcl_custom_override = {
-    for k, v in var.web2_compute_instances : k => {
+  app2_compute_instances_var2hcl_custom = {
+    for k, v in var.app2_compute_instances : k => {
       instance_fqrn = k
-      zone          = local.zones_var2hcl[v.zone].subnet
+      zone          = v.zone # Zone FQRN (e.g., zone://vm_demo/demo/app)
       availability_domain = local.zones_var2hcl[v.zone].ad
       nsg          = v.nsg
       spec         = merge(v.spec, {

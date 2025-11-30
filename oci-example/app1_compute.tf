@@ -4,10 +4,11 @@ module "app1_compute_instances" {
 
   # Pass locals (from proxy layer), NOT variables directly
   instance_fqrn = each.value.instance_fqrn
-  zone          = each.value.zone
+  zone          = each.value.zone # Zone FQRN (e.g., zone://vm_demo/demo/app)
   availability_domain = each.value.availability_domain
   nsg                     = each.value.nsg # NSG as co-resource
   spec                    = each.value.spec
+  zones                   = local.zones_var2hcl # Zones map to resolve zone FQRN to subnet FQRN
   fqrn_map                = local.network_fqrns  # Includes VCN, subnet, main NSGs, and APP2 NSGs (from fqrn.tf)
   availability_domain_name = data.oci_identity_availability_domains.ads.availability_domains[each.value.availability_domain].name
 
@@ -37,6 +38,26 @@ variable "app1_compute_instances" {
   default = {}
 }
 
+# Default var2hcl transformation logic
+locals {
+  # Default proxy layer: Transform APP1 compute instance variables into locals
+  app1_compute_instances_var2hcl_default = {
+    for k, v in var.app1_compute_instances : k => {
+      instance_fqrn = k # Instance FQRN is the map key (e.g., "instance://vm_demo/demo/app1_instance")
+      zone          = v.zone # Zone FQRN (e.g., zone://vm_demo/demo/app)
+      availability_domain = local.zones_var2hcl[v.zone].ad
+      nsg          = v.nsg
+      spec         = v.spec
+    }
+  }
+
+  # Custom var2hcl logic (optional - defined in app1_compute_custom.tf if needed)
+  # If app1_compute_custom.tf exists, it should define app1_compute_instances_var2hcl_custom
+  # which will override the default. If not defined, use default.
+
+  # Final var2hcl: Use custom override if provided (from app1_compute_custom.tf), otherwise use default
+  app1_compute_instances_var2hcl = length(keys(local.app1_compute_instances_var2hcl_custom)) > 0 ? local.app1_compute_instances_var2hcl_custom : local.app1_compute_instances_var2hcl_default
+}
 
 output "app1_compute_instances" {
   description = "APP1 Compute instance details"

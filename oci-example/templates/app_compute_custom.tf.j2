@@ -1,26 +1,23 @@
 # ═══════════════════════════════════════════════════════════════
 # Custom Variable Proxy Layer: {{ app_name.upper() }} Compute Instances
 # 
-# This file is OPTIONAL. Copy this file to {{ app_name }}_compute_var2hcl_custom.tf
-# and customize the var2hcl transformation logic as needed.
-#
-# When this file exists and defines {{ app_name }}_compute_instances_var2hcl_custom_override,
-# it will override the default var2hcl logic from {{ app_name }}_compute_var2hcl.tf
+# This file is OPTIONAL. If this file exists, it will override the
+# default var2hcl logic from {{ app_name }}_compute.tf
 # ═══════════════════════════════════════════════════════════════
 
 locals {
   # Custom proxy layer: Transform {{ app_name.upper() }} compute instance variables into locals
-  # This will override the default var2hcl logic from {{ app_name }}_compute_var2hcl.tf
+  # This will override the default var2hcl logic from {{ app_name }}_compute.tf
   # 
   # Add your custom transformation logic here:
   # - Transform values (e.g., normalize, uppercase, add defaults)
   # - Add computed fields
   # - Apply business logic rules
   # - Merge with additional data sources
-  {{ app_name }}_compute_instances_var2hcl_custom_override = {
+  {{ app_name }}_compute_instances_var2hcl_custom = {
     for k, v in var.{{ app_name }}_compute_instances : k => {
       instance_fqrn = k
-      zone          = local.zones_var2hcl[v.zone].subnet
+      zone          = v.zone # Zone FQRN (e.g., zone://vm_demo/demo/app)
       availability_domain = local.zones_var2hcl[v.zone].ad
       nsg          = v.nsg
       spec         = merge(v.spec, {

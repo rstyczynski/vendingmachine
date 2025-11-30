@@ -4,7 +4,7 @@ variable "instance_fqrn" {
 }
 
 variable "zone" {
-  description = "Zone FQRN (subnet FQRN, e.g., sub://cmp_path/vcn_name/subnet_name)"
+  description = "Zone FQRN (e.g., zone://vm_demo/demo/app). The subnet FQRN is resolved from the zone definition."
   type        = string # FQRN: zone://...
 }
 
@@ -12,6 +12,15 @@ variable "nsg" {
   description = "NSG FQRN list (co-resource, not part of zone)"
   type        = list(string)
   default     = []
+}
+
+variable "zones" {
+  description = "Zones map to resolve zone FQRN to subnet FQRN"
+  type = map(object({
+    subnet = string # Subnet FQRN
+    ad     = number # Availability domain
+  }))
+  default = {}
 }
 
 variable "fqrn_map" {

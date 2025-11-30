@@ -23,7 +23,5 @@ apps:
   - name: app2_nsgs
   app3:
   - name: app3_compute_instances
-  web1:
-  - name: web1_compute_instances
-  web2:
-  - name: web2_compute_instances
+  app4:
+  - name: app4_compute_instances

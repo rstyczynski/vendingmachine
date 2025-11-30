@@ -12,6 +12,11 @@ if [[ -f "$SCRIPT_DIR/bastion_ssh_config_completion.bash" ]]; then
   echo "Bash completion enabled for bastion_ssh_config.sh"
 fi
 
+if [[ -f "$SCRIPT_DIR/check_dependencies_completion.bash" ]]; then
+  source "$SCRIPT_DIR/check_dependencies_completion.bash"
+  echo "Bash completion enabled for check_dependencies.py"
+fi
+
 # Add this directory to PATH if not already there
 if [[ ":$PATH:" != *":$SCRIPT_DIR:"* ]]; then
   export PATH="$SCRIPT_DIR:$PATH"

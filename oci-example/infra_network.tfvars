@@ -11,7 +11,7 @@ vcns = {
 
 # Subnets Map
 subnets = {
-  "sub://vm_demo/demo/demo_vcn/public_subnet" = {
+  "sub://vm_demo/demo/demo_vcn/subnet" = {
     cidr_block                 = "10.0.1.0/24"
     dns_label                  = "publicsubnet"
     prohibit_public_ip_on_vnic = true
@@ -19,3 +19,5 @@ subnets = {
     flow_log_log_group_fqrn    = "log_group://vm_demo/demo/demo_log_group"
   }
 }
+
+

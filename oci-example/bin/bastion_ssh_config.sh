@@ -236,11 +236,11 @@ touch ~/.ssh/config
 
 # Remove existing host entry by name (if it exists)
 if [[ -f ~/.ssh/config ]]; then
-  awk -v host="$HOST_ALIAS" '
-    $1=="Host" && $2==host {skip=1; next}
-    $1=="Host" {skip=0}
-    !skip
-  ' ~/.ssh/config > ~/.ssh/config.tmp && mv ~/.ssh/config.tmp ~/.ssh/config
+awk -v host="$HOST_ALIAS" '
+  $1=="Host" && $2==host {skip=1; next}
+  $1=="Host" {skip=0}
+  !skip
+' ~/.ssh/config > ~/.ssh/config.tmp && mv ~/.ssh/config.tmp ~/.ssh/config
 fi
 
 # Extract components

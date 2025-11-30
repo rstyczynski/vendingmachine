@@ -9,9 +9,12 @@ locals {
   # Compartment FQRN format: cmp:///compartment_path (with leading slash to match compartment module output)
   compartment_fqrn = "cmp:///${local.compartment_path}"
 
+  # Resolve zone FQRN to subnet FQRN, then subnet FQRN to subnet OCID
+  subnet_fqrn = var.zones[var.zone].subnet # Zone FQRN -> subnet FQRN from zone definition
+  
   # Resolve FQRNs to OCIDs
   compartment_id = var.fqrn_map[local.compartment_fqrn]
-  subnet_id      = var.fqrn_map[var.zone] # zone is now a subnet FQRN string
+  subnet_id      = var.fqrn_map[local.subnet_fqrn] # Resolve subnet FQRN to subnet OCID
   # Handle empty NSG list and missing NSG FQRNs gracefully (filter out nulls)
   nsg_ids        = [for nsg_fqrn in var.nsg : var.fqrn_map[nsg_fqrn] if contains(keys(var.fqrn_map), nsg_fqrn)]
 }
