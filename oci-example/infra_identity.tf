@@ -2,7 +2,7 @@ module "compartments" {
   source = "./modules/compartments"
 
   tenancy_ocid = local.tenancy_ocid
-  compartments = var.compartments
+  compartments = local.compartments_var2hcl # Pass locals (from proxy layer), NOT variables directly
 }
 
 

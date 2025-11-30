@@ -25,3 +25,5 @@ apps:
   - name: app3_compute_instances
   web1:
   - name: web1_compute_instances
+  web2:
+  - name: web2_compute_instances

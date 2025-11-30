@@ -1,8 +1,9 @@
 module "log_groups" {
   source   = "./modules/log_group"
-  for_each = var.log_groups
+  for_each = local.log_groups_var2hcl
 
-  log_group_fqrn = each.key # Log group FQRN is the map key (e.g., "log_group://vm_demo/demo/demo_log_group")
+  # Pass locals (from proxy layer), NOT variables directly
+  log_group_fqrn = each.value.log_group_fqrn
   fqrn_map       = local.compartments_fqrns # Pass compartment FQRNs - Terraform auto-infers dependency on module.compartments
   description    = each.value.description
 

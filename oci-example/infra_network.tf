@@ -1,8 +1,9 @@
 module "vcns" {
   source   = "./modules/vcn"
-  for_each = var.vcns
+  for_each = local.vcns_var2hcl
 
-  vcn_fqrn                = each.key # VCN FQRN is the map key (e.g., "vcn://vm_demo/demo/demo_vcn")
+  # Pass locals (from proxy layer), NOT variables directly
+  vcn_fqrn                = each.value.vcn_fqrn
   fqrn_map                = local.compartments_fqrns # Pass compartment FQRNs - Terraform auto-infers dependency on module.compartments
   cidr_blocks             = each.value.cidr_blocks
   dns_label               = each.value.dns_label
@@ -22,14 +23,14 @@ module "vcns" {
 locals {
   # Extract VCN FQRN from subnet FQRN: sub://compartment_path/vcn_name/subnet_name -> vcn://compartment_path/vcn_name
   vcn_fqrn_from_subnet = {
-    for subnet_fqrn in keys(var.subnets) : subnet_fqrn => "vcn://${regex("^sub://(.+)/([^/]+)/", subnet_fqrn)[0]}/${regex("^sub://(.+)/([^/]+)/", subnet_fqrn)[1]}"
+    for subnet_fqrn in keys(local.subnets_var2hcl) : subnet_fqrn => "vcn://${regex("^sub://(.+)/([^/]+)/", subnet_fqrn)[0]}/${regex("^sub://(.+)/([^/]+)/", subnet_fqrn)[1]}"
   }
   
   # Service gateway route table mapping
   # Used when IGW is enabled (since IGW and SGW "All Services" cannot be in same RT per OCI limitation)
   # This RT includes both SGW and NAT routes (NAT + SGW can coexist)
   subnet_vcn_service_gateway_rt = {
-    for subnet_fqrn, subnet_config in var.subnets : subnet_fqrn => try(
+    for subnet_fqrn, subnet_config in local.subnets_var2hcl : subnet_fqrn => try(
       module.vcns[local.vcn_fqrn_from_subnet[subnet_fqrn]].service_gateway_route_table_id,
       null
     ) if subnet_config.use_service_gateway_rt
@@ -39,7 +40,7 @@ locals {
   # Only used when NAT is enabled but IGW and SGW are NOT enabled
   # When IGW is NOT enabled, NAT and SGW routes are in the default route table
   subnet_vcn_nat_gateway_rt = {
-    for subnet_fqrn, subnet_config in var.subnets : subnet_fqrn => try(
+    for subnet_fqrn, subnet_config in local.subnets_var2hcl : subnet_fqrn => try(
       module.vcns[local.vcn_fqrn_from_subnet[subnet_fqrn]].nat_gateway_route_table_id,
       null
     ) if subnet_config.use_nat_gateway_rt
@@ -48,7 +49,7 @@ locals {
   # Combined route table mapping
   # Priority: service_gateway_rt (if IGW enabled and SGW enabled) > nat_gateway_rt (if NAT only, no IGW/SGW) > null
   subnet_route_table_id = {
-    for subnet_fqrn in keys(var.subnets) : subnet_fqrn => try(
+    for subnet_fqrn in keys(local.subnets_var2hcl) : subnet_fqrn => try(
       local.subnet_vcn_service_gateway_rt[subnet_fqrn],
       local.subnet_vcn_nat_gateway_rt[subnet_fqrn],
       null
@@ -58,9 +59,10 @@ locals {
 
 module "subnets" {
   source   = "./modules/subnet"
-  for_each = var.subnets
+  for_each = local.subnets_var2hcl
 
-  subnet_fqrn             = each.key # Subnet FQRN is the map key (e.g., "sub://vm_demo/demo/demo_vcn/public_subnet")
+  # Pass locals (from proxy layer), NOT variables directly
+  subnet_fqrn             = each.value.subnet_fqrn
   fqrn_map               = merge(
     local.compartment_and_vcn_fqrns,
     local.log_groups_fqrns

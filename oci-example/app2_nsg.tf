@@ -1,8 +1,9 @@
 module "app2_nsgs" {
   source   = "./modules/nsg"
-  for_each = var.app2_nsgs
+  for_each = local.app2_nsgs_var2hcl
 
-  nsg_fqrn = each.key # NSG FQRN is the map key (e.g., "nsg://vm_demo/demo/demo_vcn/app2_web")
+  # Pass locals (from proxy layer), NOT variables directly
+  nsg_fqrn = each.value.nsg_fqrn
   fqrn_map = local.network_fqrns_base # Pass base network FQRNs (VCN, subnet - excludes app NSGs to avoid cycle)
   rules    = each.value.rules
 

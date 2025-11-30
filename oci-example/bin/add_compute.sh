@@ -8,6 +8,11 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# Activate virtual environment if it exists
+if [ -f "${PROJECT_ROOT}/.venv/bin/activate" ]; then
+    source "${PROJECT_ROOT}/.venv/bin/activate"
+fi
+
 # Check if app name is provided
 if [ -z "$1" ]; then
     echo "Error: App name is required"
@@ -28,11 +33,14 @@ fi
 # Check if compute files already exist
 TF_FILE="${PROJECT_ROOT}/${APP_NAME}_compute.tf"
 TFVARS_FILE="${PROJECT_ROOT}/${APP_NAME}_compute.tfvars"
+VAR2HCL_FILE="${PROJECT_ROOT}/${APP_NAME}_compute_var2hcl.tf"
+CUSTOM_EXAMPLE_FILE="${PROJECT_ROOT}/${APP_NAME}_compute_var2hcl_custom.tf.example"
 
-if [ -f "$TF_FILE" ] || [ -f "$TFVARS_FILE" ]; then
+if [ -f "$TF_FILE" ] || [ -f "$TFVARS_FILE" ] || [ -f "$VAR2HCL_FILE" ]; then
     echo "Error: Compute files already exist for ${APP_NAME}:"
     [ -f "$TF_FILE" ] && echo "  - ${TF_FILE}"
     [ -f "$TFVARS_FILE" ] && echo "  - ${TFVARS_FILE}"
+    [ -f "$VAR2HCL_FILE" ] && echo "  - ${VAR2HCL_FILE}"
     echo ""
     echo "To regenerate, delete these files first."
     exit 1
@@ -50,8 +58,22 @@ echo "Adding compute resources for ${APP_NAME}..."
 echo "═══════════════════════════════════════════════════════════════"
 echo ""
 
+# Generate var2hcl proxy file
+echo "1. Generating ${APP_NAME}_compute_var2hcl.tf..."
+python3 <<EOF
+from jinja2 import Template
+from pathlib import Path
+
+template_path = Path("${SCRIPT_DIR}/../templates/app_compute_var2hcl.tf.j2")
+output_path = Path("${VAR2HCL_FILE}")
+
+template = Template(template_path.read_text())
+output_path.write_text(template.render(app_name="${APP_NAME}"))
+print(f"✓ Created {output_path}")
+EOF
+
 # Generate .tf file
-echo "1. Generating ${APP_NAME}_compute.tf..."
+echo "2. Generating ${APP_NAME}_compute.tf..."
 python3 <<EOF
 from jinja2 import Template
 from pathlib import Path
@@ -65,13 +87,27 @@ print(f"✓ Created {output_path}")
 EOF
 
 # Generate .tfvars file
-echo "2. Generating ${APP_NAME}_compute.tfvars..."
+echo "3. Generating ${APP_NAME}_compute.tfvars..."
 python3 <<EOF
 from jinja2 import Template
 from pathlib import Path
 
 template_path = Path("${SCRIPT_DIR}/../templates/app_compute.tfvars.j2")
 output_path = Path("${TFVARS_FILE}")
+
+template = Template(template_path.read_text())
+output_path.write_text(template.render(app_name="${APP_NAME}"))
+print(f"✓ Created {output_path}")
+EOF
+
+# Generate custom var2hcl example file
+echo "4. Generating ${APP_NAME}_compute_var2hcl_custom.tf.example..."
+python3 <<EOF
+from jinja2 import Template
+from pathlib import Path
+
+template_path = Path("${SCRIPT_DIR}/../templates/app_compute_var2hcl_custom.tf.j2.example")
+output_path = Path("${CUSTOM_EXAMPLE_FILE}")
 
 template = Template(template_path.read_text())
 output_path.write_text(template.render(app_name="${APP_NAME}"))
@@ -86,6 +122,7 @@ echo ""
 echo "Next steps:"
 echo "  1. Review and customize ${APP_NAME}_compute.tfvars"
 echo "  2. Ensure the zone 'zone://vm_demo/demo/${APP_NAME}' exists in infra.tfvars"
-echo "  3. Run 'terraform validate' to verify the configuration"
+echo "  3. (Optional) Copy ${APP_NAME}_compute_var2hcl_custom.tf.example to ${APP_NAME}_compute_var2hcl_custom.tf to customize var2hcl logic"
+echo "  4. Run 'terraform validate' to verify the configuration"
 echo ""
 

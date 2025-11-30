@@ -1,14 +1,15 @@
 module "app2_compute_instances" {
   source   = "./modules/compute_instance"
-  for_each = var.app2_compute_instances
+  for_each = local.app2_compute_instances_var2hcl
 
-  instance_fqrn = each.key # Instance FQRN is the map key (e.g., "instance://vm_demo/demo/app2_instance")
-  zone          = var.zones[each.value.zone].subnet # Zone is subnet FQRN
-  availability_domain = var.zones[each.value.zone].ad
+  # Pass locals (from proxy layer), NOT variables directly
+  instance_fqrn = each.value.instance_fqrn
+  zone          = each.value.zone
+  availability_domain = each.value.availability_domain
   nsg                     = each.value.nsg # NSG as co-resource
   spec                    = each.value.spec
   fqrn_map                = local.network_fqrns  # Includes VCN, subnet, main NSGs, and APP2 NSGs (from fqrn.tf)
-  availability_domain_name = data.oci_identity_availability_domains.ads.availability_domains[var.zones[each.value.zone].ad].name
+  availability_domain_name = data.oci_identity_availability_domains.ads.availability_domains[each.value.availability_domain].name
 
   # depends_on = [
   #   module.subnets,
