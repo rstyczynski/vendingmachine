@@ -9,10 +9,11 @@
 
 module "bastions" {
   source   = "./modules/bastion"
-  for_each = var.bastions
+  for_each = local.bastions_var2hcl
 
-  bastion_fqrn        = each.key # Bastion FQRN is the map key (e.g., "bastion://vm_demo/demo/demo_bastion")
-  target_subnet_fqrn  = each.value.target_subnet_fqrn # Subnet FQRN that bastion connects to
+  # Pass locals (from proxy layer), NOT variables directly
+  bastion_fqrn        = each.value.bastion_fqrn
+  target_subnet_fqrn  = each.value.target_subnet_fqrn
   fqrn_map            = local.network_fqrns_base # Pass compartment + VCN + Subnet FQRNs - Terraform auto-infers dependencies
   bastion_type        = each.value.bastion_type
   client_cidr_block_allow_list = each.value.client_cidr_block_allow_list
