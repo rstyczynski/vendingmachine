@@ -4,23 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**OCI Vending Machine** is a framework for ordering and deploying Oracle Cloud Infrastructure (OCI) resources through a declarative, human-readable approach. This is a design and planning repository - actual Terraform modules will be implemented in separate repositories.
+OCI Vending Machine is a framework for ordering and deploying Oracle Cloud Infrastructure (OCI) resources through a declarative, human-readable approach. The repository contains design documentation and a working reference implementation in the oci-example directory.
 
-**Key Principle:** Infrastructure as data. Code stays static, configuration drives everything.
+Key principle: Infrastructure as data. Code stays static, configuration drives everything.
 
 ## Core Architecture - The 4-Domain Model
 
 Every infrastructure request is defined by four domains:
 
-1. **FEATURE** - What to build (resource type + spec + arguments)
-2. **ZONE(S)** - Where in OCI (location context: compartment, subnet, NSG, vault, VCN, AD)
-3. **DEPLOYMENT** - Who owns (ownership context: git repo, CI/CD pipeline, state file)
-4. **PACKAGING** - How to deliver (Terraform, Ansible, or CLI)
+- FEATURE - What to build (resource type, specification, arguments)
+- ZONE(S) - Where in OCI (location context: compartment, subnet, NSG, vault, VCN, AD)
+- DEPLOYMENT - Who owns (ownership context: git repo, CI/CD pipeline, state file)
+- PACKAGING - How to deliver (Terraform, Ansible, or CLI)
 
-### Critical Design Decisions
+## Critical Design Decisions
 
-**FQRN (Fully Qualified Resource Names):**
-Human-readable addressing instead of raw OCIDs:
+FQRN (Fully Qualified Resource Names) - Human-readable addressing instead of raw OCIDs:
 ```
 cmp://cmp_prod/cmp_app                              # compartment
 vcn://cmp_prod/cmp_network/vcn_main                 # VCN
@@ -29,11 +28,9 @@ nsg://cmp_prod/cmp_network/vcn_main/nsg_ssh         # NSG
 vault://cmp_prod/cmp_security/vault_main            # vault
 ```
 
-**Zone = Location Context ONLY:**
-Zone defines WHERE in OCI, not ownership. Ownership is implicit from repository location.
+Zone = Location Context ONLY - Zone defines WHERE in OCI, not ownership. Ownership is implicit from repository location.
 
-**Map-Based Configuration:**
-Resources defined as maps in tfvars enable N instances from a single module definition:
+Map-Based Configuration - Resources defined as maps in tfvars enable N instances from a single module definition:
 
 ```hcl
 compute_instances = {
@@ -43,11 +40,11 @@ compute_instances = {
 }
 ```
 
-**Terraform Module Approach (NOT Code Generation):**
-- No Jinja2 templates or code generation
-- Reusable Terraform modules with `for_each`
-- Users call modules directly
-- FQRN resolution via data sources inside modules
+Terraform module approach with selective automation:
+- Reusable Terraform modules are hand-written (no code generation for modules themselves)
+- Modules use `for_each` for multi-instance deployments
+- FQRN resolution via aggregated maps passed to modules
+- Auto-generation is used only for orchestration files (terraform_fqrn.tf, terraform.tfvars) to support multi-app deployments
 
 ## Module Interface Pattern
 
@@ -93,73 +90,114 @@ module "compute" {
 
 FQRN syntax: `scheme://compartment_path/resource_name`
 
-**Resolution uses all three components:**
-- **Scheme** - Resource type (cmp, vcn, sub, nsg, vault, drg) determines which OCI data source to query
-- **Compartment path** - Where to search (resolved to compartment OCID)
-- **Resource name** - What to find (display_name filter)
+Resolution uses all three components:
+- Scheme - Resource type (cmp, vcn, sub, nsg, vault, drg) determines which OCI data source to query
+- Compartment path - Where to search (resolved to compartment OCID)
+- Resource name - What to find (display_name filter)
 
 Example: `sub://cmp_prod/cmp_network/vcn_main/sub_private`
 1. Scheme `sub://` → use `data.oci_core_subnets`
 2. Path `cmp_prod/cmp_network/vcn_main` → resolve to compartment OCID
 3. Name `sub_private` → filter by display_name
 
-**Same-Session Resolution Problem:**
-Data sources execute at plan start, BEFORE resources are created. Resources created in the same session cannot be found by data sources.
+Same-session resolution approach: Layered FQRN map aggregation solves the problem of resources created in the same Terraform session. Each infrastructure layer outputs FQRN→OCID mappings, which are merged and passed to dependent layers. This enables immediate resolution without data sources.
 
-**Solution: Dual-Input Approach** (from terraform-oci-modules-iam):
-- `existing_*` lists - Resources that already exist (resolved via data sources)
-- `*` maps - Resources to create in this session (created as resources)
-- Unified output - Merged map provides OCIDs for both existing and new resources
+Example flow:
+- Layer 1 creates compartments → outputs compartment FQRNs
+- Layer 2 creates VCNs using compartment FQRNs → outputs VCN FQRNs
+- Layer 3 creates subnets using compartment + VCN FQRNs → outputs subnet FQRNs
+- Layer 4 creates compute instances using all network FQRNs
 
-Reference module for compartment resolution: `github.com/rstyczynski/terraform-oci-modules-iam`
+The unified FQRN map is automatically aggregated in terraform_fqrn.tf (auto-generated file) and provides same-session resolution for all resources.
 
-See `FQRN.md` for complete resolution details.
+See FQRN.md for complete resolution details and pattern specifications.
 
 ## Repository Structure
 
-This is a design repository. Implementation repositories will follow:
+The repository contains design documents at the root level and a working reference implementation in oci-example:
 
 ```
-oci-vending/
-└── modules/
-    ├── fqrn_resolver/      # FQRN to OCID resolution
-    ├── compute_instance/   # VM instances
-    ├── database/           # Oracle DB systems
-    ├── subnet/             # Network subnets
-    ├── nsg/                # Network security groups
-    ├── load_balancer/      # Load balancers
-    └── bastion_session/    # Bastion access
+vendingmachine/
+├── *.md                    # Design documentation
+├── oci-example/            # Reference implementation
+│   ├── modules/
+│   │   ├── compartment/    # Single compartment module
+│   │   ├── compartments/   # Multi-compartment module
+│   │   ├── vcn/            # Virtual Cloud Networks
+│   │   ├── subnet/         # Network subnets
+│   │   ├── nsg/            # Network security groups
+│   │   ├── compute_instance/ # VM instances
+│   │   ├── bastion/        # Bastion hosts
+│   │   └── log_group/      # Logging infrastructure
+│   ├── bin/
+│   │   ├── generate_fqrn.sh      # Auto-generates terraform_fqrn.tf
+│   │   ├── generate_tfvars.sh    # Auto-generates terraform.tfvars
+│   │   ├── add_compute.sh        # Helper for adding compute instances
+│   │   └── bastion_ssh_config.sh # Bastion SSH configuration
+│   ├── templates/
+│   │   ├── terraform_fqrn.tf.j2     # Template for FQRN map aggregation
+│   │   ├── app_compute.tf.j2        # Template for app compute resources
+│   │   └── app_compute.tfvars.j2    # Template for app variables
+│   ├── infra_*.tf          # Shared infrastructure (compartments, VCN, subnets)
+│   ├── app1_*.tf           # Application 1 resources (NSGs, compute)
+│   ├── app2_*.tf           # Application 2 resources
+│   ├── app3_*.tf           # Application 3 resources
+│   ├── web1_*.tf           # Web application resources
+│   ├── terraform_fqrn.tf   # Auto-generated FQRN map aggregation
+│   └── terraform.tfvars    # Auto-generated combined configuration
 ```
 
 Each module contains:
-- `variables.tf` - name, spec, zone inputs
-- `fqrn.tf` - FQRN resolution logic
-- `main.tf` - resource definition
-- `outputs.tf` - exported values
+- variables.tf - Module inputs (typically: name, spec, zone, fqrn_map)
+- main.tf - Resource definitions
+- outputs.tf - FQRN map and resource attributes
+
+## Multi-Application Deployment Pattern
+
+The reference implementation demonstrates managing multiple applications in a single Terraform workspace with clear separation:
+
+Shared infrastructure (infra_*.tf files):
+- Managed by platform team
+- Defines compartments, VCNs, subnets, bastion hosts
+- Changes infrequently
+
+Application-specific resources (app*_*.tf files):
+- Owned by application teams
+- Defines NSGs and compute instances per application
+- Each app has separate .tf and .tfvars files
+- Apps can reference each other's NSGs via FQRNs
+
+Auto-generated orchestration:
+- terraform_fqrn.tf - Aggregates FQRN maps from all modules (generated by bin/generate_fqrn.sh)
+- terraform.tfvars - Combines all *_terraform.tfvars files (generated by bin/generate_tfvars.sh)
+
+Adding a new application requires only creating new app files and running generation scripts. No manual editing of shared files needed.
 
 ## Separation: Zone vs Deployment
 
-**Zone (Location Context):**
+Zone (location context):
 - Passed to module as variable
 - Defines WHERE in OCI
 - Changes per resource
 - Example: compartment, subnet, NSG
 
-**Deployment (Ownership Context):**
-- NOT passed to module (implicit)
-- Defined by repository location
-- Changes per team/project
+Deployment (ownership context):
+- NOT passed to module, implicit from repository location
+- Defines WHO manages the resources
+- Changes per team or project
 - Example: git repo, pipeline, state file
 
-One deployment can manage resources across multiple zones.
+One deployment can manage resources across multiple zones and multiple applications.
 
 ## Configuration Pattern
 
-**variables.tf** - Define schemas for zones and resources as maps
+The framework separates code from data using a three-file pattern:
 
-**main.tf** - Static module calls with `for_each` over resource maps
+- variables.tf - Define schemas for zones and resources as maps
+- main.tf - Static module calls with `for_each` over resource maps
+- terraform.tfvars - Data-driven configuration (changes frequently)
 
-**terraform.tfvars** - Data-driven configuration (changes frequently)
+Example configuration:
 ```hcl
 zones = {
   app = { compartment = "cmp://...", subnet = "sub://...", nsg = [...] }
@@ -172,27 +210,78 @@ compute_instances = {
 }
 ```
 
+## Automation Scripts
+
+The reference implementation includes helper scripts in oci-example/bin:
+
+generate_fqrn.sh - Auto-generates terraform_fqrn.tf from module references found in Terraform files. Uses Python script and Jinja2 template. Creates virtual environment automatically. Run after adding new applications.
+
+generate_tfvars.sh - Combines all *_terraform.tfvars files into a single terraform.tfvars. Run after modifying any .tfvars file.
+
+add_compute.sh - Interactive script to add new compute instances to an application. Generates necessary configuration entries.
+
+bastion_ssh_config.sh - Configures SSH access through OCI bastion service. Manages session creation and SSH config.
+
+terraform_prepare.sh - Validates and prepares Terraform configuration before deployment.
+
 ## Key Terminology
 
-- **FQRN** - Fully Qualified Resource Name (human-readable OCI addressing)
-- **Zone** - Location context (WHERE in OCI)
-- **Deployment** - Ownership context (WHO manages, WHERE code lives)
-- **Feature** - Resource specification (WHAT to build)
-- **Packaging** - Delivery method (HOW - Terraform/Ansible/CLI)
+FQRN - Fully Qualified Resource Name, human-readable OCI addressing scheme
+Zone - Location context, defines WHERE in OCI
+Deployment - Ownership context, defines WHO manages and WHERE code lives
+Feature - Resource specification, defines WHAT to build
+Packaging - Delivery method, defines HOW (Terraform, Ansible, or CLI)
 
-## Implementation Priority
+## Implementation Status
 
-1. FQRN Resolver module - extend for VCN, subnet, NSG, vault
-2. Core resource modules - compute_instance, database, subnet, nsg
-3. Example deployments - sample tfvars demonstrating map-based pattern
-4. Module documentation - interface specifications
+Completed modules:
+- compartment, compartments - Compartment management
+- vcn - Virtual Cloud Networks with Internet Gateway
+- subnet - Network subnets
+- nsg - Network Security Groups with rule management
+- compute_instance - VM instances
+- bastion - Bastion host management
+- log_group - Logging infrastructure
 
-## Design Documents
+Demonstrated patterns:
+- FQRN-based resource references
+- Layered FQRN map aggregation for same-session resolution
+- Multi-application deployment in single workspace
+- Auto-generation of orchestration files
+- Cross-application resource references
 
-- `oci-vending-machine-design v1.md` - Complete design specification
-- `CLAUDE_chat.md` - Design conversation summary
-- `CLAUDE.md` - This file (working guidance for Claude Code)
+Potential future modules:
+- Database systems
+- Load balancers
+- Object storage
+- Vault integration
 
-## Reference Project
+## Documentation Files
 
-Existing compartment path resolution module: https://github.com/rstyczynski/terraform-oci-modules-iam
+Design and architecture:
+- oci-vending-machine-design v1.md - Complete design specification
+- CLAUDE_chat.md - Design conversation summary
+- CLAUDE.md - This file, working guidance for Claude Code
+- FQRN.md - FQRN syntax and resolution patterns
+- NSG.md - Network Security Groups architecture
+- MODULE_INTEGRATION.md - Module integration patterns
+
+Implementation guides:
+- oci-example/README.md - Reference implementation overview
+- MULTI_APP.md - Multi-application deployment guide
+- README_GENERATION.md - Auto-generation scripts documentation
+
+## Working with This Repository
+
+When modifying the oci-example implementation:
+- Edit module code directly in oci-example/modules/
+- Edit infrastructure definitions in infra_*.tf files
+- Edit application configurations in app*_*.tf and app*_*.tfvars files
+- Run bin/generate_fqrn.sh after adding new modules or applications
+- Run bin/generate_tfvars.sh after modifying .tfvars files
+- Never manually edit terraform_fqrn.tf or terraform.tfvars (auto-generated)
+
+When adding new design patterns:
+- Update relevant .md files in repository root
+- Add examples to oci-example if demonstrating new patterns
+- Update CLAUDE.md to reflect architectural changes
