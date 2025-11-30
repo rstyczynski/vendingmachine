@@ -11,112 +11,82 @@
 
 locals {
   # Shared infrastructure FQRN maps
-
-  compartment_fqrns = module.compartments.fqrn_map
-
-
-  vcn_fqrns = merge([
+  bastions_fqrns = merge([
+    for k, m in module.bastions : m.fqrn_map
+  ]...)
+  compartments_fqrns = module.compartments.fqrn_map
+  log_groups_fqrns = merge([
+    for k, m in module.log_groups : m.fqrn_map
+  ]...)
+  vcns_fqrns = merge([
     for k, m in module.vcns : m.fqrn_map
   ]...)
-
-
-  subnet_fqrns = merge([
+  subnets_fqrns = merge([
     for k, m in module.subnets : m.fqrn_map
   ]...)
-
-
-
   # APP1 module FQRN maps
-
-  app1_nsgs_fqrns = merge([
-    for k, m in module.app1_nsgs : m.fqrn_map
-  ]...)
-
-
   app1_compute_instances_fqrns = merge([
     for k, m in module.app1_compute_instances : m.fqrn_map
   ]...)
-
-
-
-  # APP2 module FQRN maps
-
-  app2_nsgs_fqrns = merge([
-    for k, m in module.app2_nsgs : m.fqrn_map
+  app1_nsgs_fqrns = merge([
+    for k, m in module.app1_nsgs : m.fqrn_map
   ]...)
-
-
+  # APP2 module FQRN maps
   app2_compute_instances_fqrns = merge([
     for k, m in module.app2_compute_instances : m.fqrn_map
   ]...)
-
-
-
+  app2_nsgs_fqrns = merge([
+    for k, m in module.app2_nsgs : m.fqrn_map
+  ]...)
+  # APP3 module FQRN maps
+  app3_compute_instances_fqrns = merge([
+    for k, m in module.app3_compute_instances : m.fqrn_map
+  ]...)
+  # WEB1 module FQRN maps
+  web1_compute_instances_fqrns = merge([
+    for k, m in module.web1_compute_instances : m.fqrn_map
+  ]...)
   # Combined FQRN maps for layer dependencies
   compartment_and_vcn_fqrns = merge(
-    local.compartment_fqrns,
-    local.vcn_fqrns
+    local.compartments_fqrns,
+    local.vcns_fqrns
   )
-
   compartment_vcn_subnet_fqrns = merge(
-    local.compartment_fqrns,
-    local.vcn_fqrns,
-    local.subnet_fqrns
+    local.compartments_fqrns,
+    local.vcns_fqrns,
+    local.subnets_fqrns
   )
 
   # Network FQRNs base (without app NSGs to avoid cycles during NSG creation)
   network_fqrns_base = merge(
-    local.compartment_fqrns,
-    local.vcn_fqrns,
-    local.subnet_fqrns
+    local.compartments_fqrns,
+    local.vcns_fqrns,
+    local.subnets_fqrns
   )
 
   # Network FQRNs including all NSGs (for use after NSGs are created)
   network_fqrns = merge(
     local.network_fqrns_base,
-
-
-
     local.app1_nsgs_fqrns,  # Include APP1 NSGs
-
-
-
-
-
-
-
     local.app2_nsgs_fqrns,  # Include APP2 NSGs
-
-
-
-
-
   )
 
   # Unified FQRN map - merges ALL resources from all applications
   fqrns = merge(
-
-    local.compartment_fqrns,
-
-    local.vcn_fqrns,
-
-    local.subnet_fqrns,
-
-
-
-    local.app1_nsgs_fqrns,
-
+    local.bastions_fqrns,
+    local.compartments_fqrns,
+    local.log_groups_fqrns,
+    local.vcns_fqrns,
+    local.subnets_fqrns,
     local.app1_compute_instances_fqrns,
-
-
-
-    local.app2_nsgs_fqrns,
-
+    local.app1_nsgs_fqrns,
     local.app2_compute_instances_fqrns,
-
-
+    local.app2_nsgs_fqrns,
+    local.app3_compute_instances_fqrns,
+    local.web1_compute_instances_fqrns,
   )
 
   # Unified FQRN map for output (alias)
   unified_fqrn_map = local.fqrns
 }
+

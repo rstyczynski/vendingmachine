@@ -15,6 +15,11 @@ locals {
   # Resolve FQRNs to OCIDs
   compartment_id = var.fqrn_map[local.compartment_fqrn]
   vcn_id         = var.fqrn_map[local.vcn_fqrn]
+  
+  # Resolve log group FQRN to OCID if provided
+  flow_log_log_group_id = var.flow_log_log_group_id != null ? var.flow_log_log_group_id : (
+    var.flow_log_log_group_fqrn != null ? var.fqrn_map[var.flow_log_log_group_fqrn] : null
+  )
 }
 
 resource "oci_core_subnet" "this" {
@@ -24,6 +29,31 @@ resource "oci_core_subnet" "this" {
   cidr_block                 = var.cidr_block
   dns_label                  = var.dns_label
   prohibit_public_ip_on_vnic = var.prohibit_public_ip_on_vnic
+  route_table_id             = var.route_table_id
+
+  freeform_tags = {
+    "managed_by" = "terraform"
+    "component"  = "oci-vending-machine"
+  }
+}
+
+# VCN Flow Log for subnet (using OCI Logging service)
+resource "oci_logging_log" "this" {
+  count = var.enable_flow_log ? 1 : 0
+
+  display_name   = var.flow_log_display_name != null ? var.flow_log_display_name : "${local.subnet_name}-flow-log"
+  log_group_id   = local.flow_log_log_group_id
+  log_type       = "SERVICE"
+  is_enabled     = true
+
+  configuration {
+    source {
+      source_type = "OCISERVICE"
+      service     = "flowlogs"
+      resource    = oci_core_subnet.this.id
+      category    = "all"
+    }
+  }
 
   freeform_tags = {
     "managed_by" = "terraform"

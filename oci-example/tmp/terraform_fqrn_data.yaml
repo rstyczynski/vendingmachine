@@ -1,0 +1,27 @@
+shared_modules:
+- name: bastions
+  var_name: bastions_fqrns
+  for_each: true
+- name: compartments
+  var_name: compartments_fqrns
+  for_each: false
+- name: log_groups
+  var_name: log_groups_fqrns
+  for_each: true
+- name: vcns
+  var_name: vcns_fqrns
+  for_each: true
+- name: subnets
+  var_name: subnets_fqrns
+  for_each: true
+apps:
+  app1:
+  - name: app1_compute_instances
+  - name: app1_nsgs
+  app2:
+  - name: app2_compute_instances
+  - name: app2_nsgs
+  app3:
+  - name: app3_compute_instances
+  web1:
+  - name: web1_compute_instances

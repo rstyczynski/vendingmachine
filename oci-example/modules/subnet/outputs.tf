@@ -14,3 +14,8 @@ output "fqrn_map" {
     "sub://${local.compartment_path}/${local.vcn_name}/${oci_core_subnet.this.display_name}" = oci_core_subnet.this.id
   }
 }
+
+output "flow_log_id" {
+  description = "Flow log OCID (if enabled)"
+  value       = var.enable_flow_log ? oci_logging_log.this[0].id : null
+}

@@ -11,62 +11,72 @@
 
 locals {
   # Shared infrastructure FQRN maps
-{% for mod in shared_modules %}
+{%- for mod in shared_modules %}
   {{ mod.var_name }} = {% if mod.for_each %}merge([
     for k, m in module.{{ mod.name }} : m.fqrn_map
   ]...){% else %}module.{{ mod.name }}.fqrn_map{% endif %}
 
-{% endfor %}
-{% for app_name, modules in apps.items() %}
+{%- endfor %}
+{%- for app_name, modules in apps.items() %}
   # {{ app_name.upper() }} module FQRN maps
-{% for mod in modules %}
+{%- for mod in modules %}
   {{ mod.name }}_fqrns = merge([
     for k, m in module.{{ mod.name }} : m.fqrn_map
   ]...)
 
-{% endfor %}
-{% endfor %}
+{%- endfor %}
+{%- endfor %}
   # Combined FQRN maps for layer dependencies
+{%- set compartment_mod = shared_modules | selectattr("name", "equalto", "compartments") | first %}
+{%- set vcn_mod = shared_modules | selectattr("name", "equalto", "vcns") | first %}
+{%- set subnet_mod = shared_modules | selectattr("name", "equalto", "subnets") | first %}
+{%- if compartment_mod and vcn_mod %}
   compartment_and_vcn_fqrns = merge(
-    local.compartment_fqrns,
-    local.vcn_fqrns
+    local.{{ compartment_mod.var_name }},
+    local.{{ vcn_mod.var_name }}
   )
-
+{%- endif %}
+{%- if compartment_mod and vcn_mod and subnet_mod %}
   compartment_vcn_subnet_fqrns = merge(
-    local.compartment_fqrns,
-    local.vcn_fqrns,
-    local.subnet_fqrns
+    local.{{ compartment_mod.var_name }},
+    local.{{ vcn_mod.var_name }},
+    local.{{ subnet_mod.var_name }}
   )
+{%- endif %}
 
   # Network FQRNs base (without app NSGs to avoid cycles during NSG creation)
+{%- if compartment_mod and vcn_mod and subnet_mod %}
   network_fqrns_base = merge(
-    local.compartment_fqrns,
-    local.vcn_fqrns,
-    local.subnet_fqrns
+    local.{{ compartment_mod.var_name }},
+    local.{{ vcn_mod.var_name }},
+    local.{{ subnet_mod.var_name }}
   )
+{%- endif %}
 
   # Network FQRNs including all NSGs (for use after NSGs are created)
+{%- if compartment_mod and vcn_mod and subnet_mod %}
   network_fqrns = merge(
     local.network_fqrns_base,
-{% for app_name, modules in apps.items() %}
-{% for mod in modules %}
-{% if 'nsgs' in mod.name %}
+{%- for app_name, modules in apps.items() %}
+{%- for mod in modules %}
+{%- if 'nsgs' in mod.name %}
     local.{{ mod.name }}_fqrns,  # Include {{ app_name.upper() }} NSGs
-{% endif %}
-{% endfor %}
-{% endfor %}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
   )
+{%- endif %}
 
   # Unified FQRN map - merges ALL resources from all applications
   fqrns = merge(
-{% for mod in shared_modules %}
+{%- for mod in shared_modules %}
     local.{{ mod.var_name }},
-{% endfor %}
-{% for app_name, modules in apps.items() %}
-{% for mod in modules %}
+{%- endfor %}
+{%- for app_name, modules in apps.items() %}
+{%- for mod in modules %}
     local.{{ mod.name }}_fqrns,
-{% endfor %}
-{% endfor %}
+{%- endfor %}
+{%- endfor %}
   )
 
   # Unified FQRN map for output (alias)

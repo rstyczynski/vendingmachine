@@ -12,7 +12,8 @@ locals {
   # Resolve FQRNs to OCIDs
   compartment_id = var.fqrn_map[local.compartment_fqrn]
   subnet_id      = var.fqrn_map[var.zone.subnet]
-  nsg_ids        = [for nsg_fqrn in var.nsg : var.fqrn_map[nsg_fqrn]]
+  # Handle empty NSG list and missing NSG FQRNs gracefully (filter out nulls)
+  nsg_ids        = [for nsg_fqrn in var.nsg : var.fqrn_map[nsg_fqrn] if contains(keys(var.fqrn_map), nsg_fqrn)]
 }
 
 # Get latest Oracle Linux 8 image if not provided
@@ -49,6 +50,16 @@ resource "oci_core_instance" "this" {
     source_type             = "image"
     source_id               = var.spec.source_image_id != null ? var.spec.source_image_id : data.oci_core_images.ol8[0].images[0].id
     boot_volume_size_in_gbs = var.spec.boot_volume_size_in_gbs
+  }
+
+  agent_config {
+    are_all_plugins_disabled = false
+    is_management_disabled   = false
+    is_monitoring_disabled    = false
+    plugins_config {
+      desired_state = var.spec.enable_bastion_plugin ? "ENABLED" : "DISABLED"
+      name          = "Bastion"
+    }
   }
 
   metadata = {

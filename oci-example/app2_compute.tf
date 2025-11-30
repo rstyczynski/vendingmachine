@@ -12,10 +12,10 @@ module "app2_compute_instances" {
   fqrn_map                = local.network_fqrns  # Includes VCN, subnet, main NSGs, and APP2 NSGs (from fqrn.tf)
   availability_domain_name = data.oci_identity_availability_domains.ads.availability_domains[var.zones[each.value.zone].ad].name
 
-  depends_on = [
-    module.subnets,
-    module.app2_nsgs
-  ]
+  # depends_on = [
+  #   module.subnets,
+  #   module.app2_nsgs
+  # ]
 }
 
 variable "app2_compute_instances" {
@@ -31,6 +31,7 @@ variable "app2_compute_instances" {
       ssh_public_key          = string
       source_image_id         = optional(string)
       boot_volume_size_in_gbs = optional(number, 50)
+      enable_bastion_plugin   = optional(bool, false) # Enable Oracle Cloud Agent Bastion plugin
     })
   }))
   default = {}

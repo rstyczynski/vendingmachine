@@ -6,7 +6,8 @@ module "app1_nsgs" {
   fqrn_map = local.network_fqrns_base # Pass base network FQRNs (VCN, subnet - excludes app NSGs to avoid cycle)
   rules    = each.value.rules
 
-  depends_on = [module.subnets]
+  # depends_on not needed: local.network_fqrns_base depends on module.compartments, module.vcns, module.subnets
+  # All dependencies are automatically inferred from fqrn_map references
 }
 
 

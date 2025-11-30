@@ -1,0 +1,20 @@
+{
+  "data": {
+    "compartment-id": "ocid1.compartment.oc1..aaaaaaaa3ze5cwuso2kggf7isu4bm5ue523jov5nul6insm6iouy2iiq7qla",
+    "id": "ocid1.bastionworkrequest.oc1.eu-zurich-1.amaaaaaaknhfuyiaqoslfrq5gh6cdhn5nr4a73eaowybzf45ttxrwflmlhsq",
+    "operation-type": "CREATE_SESSION",
+    "percent-complete": 100.0,
+    "resources": [
+      {
+        "action-type": "CREATED",
+        "entity-type": "SessionResource",
+        "entity-uri": "/sessions/ocid1.bastionsession.oc1.eu-zurich-1.amaaaaaaknhfuyiaf6ivr4egndj7hysj34fjz7qluvl3j2tlburuevrn2xlq",
+        "identifier": "ocid1.bastionsession.oc1.eu-zurich-1.amaaaaaaknhfuyiaf6ivr4egndj7hysj34fjz7qluvl3j2tlburuevrn2xlq"
+      }
+    ],
+    "status": "SUCCEEDED",
+    "time-accepted": "2025-11-30T05:36:40.046000+00:00",
+    "time-finished": "2025-11-30T05:37:53.508000+00:00",
+    "time-started": "2025-11-30T05:36:49.554000+00:00"
+  }
+}

@@ -33,6 +33,7 @@ variable "spec" {
     ssh_public_key          = string
     source_image_id         = optional(string)
     boot_volume_size_in_gbs = optional(number, 50)
+    enable_bastion_plugin   = optional(bool, false) # Enable Oracle Cloud Agent Bastion plugin
   })
 }
 

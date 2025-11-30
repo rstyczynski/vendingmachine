@@ -1,0 +1,1 @@
+ssh -i /Users/rstyczynski/.ssh/id_rsa -o ProxyCommand="ssh -i /Users/rstyczynski/.ssh/id_rsa -W %h:%p -p 22 ocid1.bastionsession.oc1.eu-zurich-1.amaaaaaaknhfuyiaf6ivr4egndj7hysj34fjz7qluvl3j2tlburuevrn2xlq@host.bastion.eu-zurich-1.oci.oraclecloud.com" -p 22 opc@10.0.1.81

@@ -26,3 +26,21 @@ variable "create_internet_gateway" {
   type        = bool
   default     = true
 }
+
+variable "create_service_gateway" {
+  description = "Create service gateway for OCI services access"
+  type        = bool
+  default     = false
+}
+
+variable "service_gateway_services" {
+  description = "List of service names to enable via service gateway (e.g., ['OCI Object Storage', 'OCI Object Storage - Archive']). Empty list enables all services."
+  type        = list(string)
+  default     = [] # Empty list means all services
+}
+
+variable "create_nat_gateway" {
+  description = "Create NAT gateway for private subnets to access internet"
+  type        = bool
+  default     = false
+}

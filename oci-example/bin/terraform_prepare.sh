@@ -24,6 +24,8 @@ cd "${PROJECT_ROOT}"
 "${SCRIPT_DIR}/generate_fqrn.sh"
 echo ""
 
+terraform init
+
 echo "═══════════════════════════════════════════════════════════════"
 echo "✓ All files generated successfully!"
 echo "═══════════════════════════════════════════════════════════════"
