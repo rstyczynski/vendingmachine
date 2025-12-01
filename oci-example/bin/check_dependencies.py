@@ -195,7 +195,7 @@ def build_dependency_tree(
     
     return tree
 
-def print_dependencies(resource_name: str, mandatory: Set[str], optional: Set[str], resources: Dict, show_descriptions: bool = False, direct_only: bool = False, debug: bool = False):
+def print_dependencies(resource_name: str, mandatory: Set[str], optional: Set[str], resources: Dict, show_descriptions: bool = False, direct_only: bool = False, debug: bool = False, show_siblings: bool = False, show_kind: bool = False):
     """Print formatted dependency information in tree format."""
     print("═" * 70)
     print(f"Resource: {resource_name.upper()}")
@@ -206,15 +206,45 @@ def print_dependencies(resource_name: str, mandatory: Set[str], optional: Set[st
         print(f"\nDescription: {resource.get('description', 'N/A')}")
         print(f"FQRN Scheme: {resource.get('fqrn_scheme', 'N/A')}")
     
-    # Build dependency tree (always full tree, annotations added later for --direct mode)
+    # Build dependency tree (always full tree, annotations added later for --source mode)
     tree = build_dependency_tree(resources, resource_name, direct_only=False)
     
+    # If --siblings is set, also include dependents (what depends on target) in the tree
+    dependents_set = set()
+    if show_siblings:
+        dependents_set = get_all_dependents_recursive(resources, resource_name)
+        # Add dependents to the tree
+        for dep_name in dependents_set:
+            if dep_name not in tree:
+                tree[dep_name] = {
+                    'mandatory': [],
+                    'optional': [],
+                    'either': [],
+                    'either_resources': set()
+                }
+            # Get the mandatory deps of this dependent
+            dep_resource = resources.get(dep_name, {})
+            dep_requires = dep_resource.get('requires', {})
+            for req in dep_requires.get('mandatory', []):
+                if isinstance(req, dict):
+                    req_name = list(req.keys())[0]
+                    if req_name != 'either' and req_name not in tree[dep_name]['mandatory']:
+                        tree[dep_name]['mandatory'].append(req_name)
+                elif req not in tree[dep_name]['mandatory']:
+                    tree[dep_name]['mandatory'].append(req)
+    
     print("\n" + "─" * 70)
-    print("DEPENDENCY TREE (top to bottom):")
+    if show_siblings:
+        print("DEPENDENCY TREE WITH DEPENDENTS (top to bottom):")
+    else:
+        print("DEPENDENCY TREE (top to bottom):")
     print("─" * 70)
     print("\n✅ = Mandatory dependency")
     print("🔹 = Optional dependency")
-    print("🔶 = One of (choose one)\n")
+    print("🔶 = One of (choose one)")
+    if show_siblings:
+        print("🔻 = Dependent (depends on target)")
+    print()
     
     # Build reverse mapping: what MANDATORILY depends on what (for building the tree)
     # Only include mandatory dependencies - optional ones are shown separately at the tail
@@ -238,6 +268,25 @@ def print_dependencies(resource_name: str, mandatory: Set[str], optional: Set[st
                 depends_on[dep] = []
             depends_on[dep].append((resource_name, False))
         # Optional deps are NOT added here either
+    
+    # If showing siblings/dependents, add them to depends_on mapping
+    if show_siblings and dependents_set:
+        for dep_name in dependents_set:
+            dep_resource = resources.get(dep_name, {})
+            dep_requires = dep_resource.get('requires', {})
+            for req in dep_requires.get('mandatory', []):
+                if isinstance(req, dict):
+                    req_name = list(req.keys())[0]
+                    if req_name != 'either':
+                        if req_name not in depends_on:
+                            depends_on[req_name] = []
+                        if (dep_name, False) not in depends_on[req_name]:
+                            depends_on[req_name].append((dep_name, False))
+                else:
+                    if req not in depends_on:
+                        depends_on[req] = []
+                    if (dep_name, False) not in depends_on[req]:
+                        depends_on[req].append((dep_name, False))
     
     # In direct_only mode, use full view but annotate resources that are PROVIDED
     if direct_only:
@@ -286,7 +335,7 @@ def print_dependencies(resource_name: str, mandatory: Set[str], optional: Set[st
     else:
         annotations = {}  # No annotations in normal mode
     
-    # Full transitive display (both modes use this, but --direct adds annotations)
+    # Full transitive display (both modes use this, but --source adds annotations)
     # Find root nodes (nodes with no dependencies)
     all_nodes = set(tree.keys())
     all_nodes.add(resource_name)
@@ -310,7 +359,7 @@ def print_dependencies(resource_name: str, mandatory: Set[str], optional: Set[st
     if root_nodes:
         for i, root in enumerate(sorted(root_nodes)):
             is_last_root = (i == len(root_nodes) - 1)
-            target_printed = print_tree_node(resources, root, tree, depends_on, visited.copy(), "", is_last_root, False, resource_name, target_printed, longest_path, all_either_resources, show_descriptions, annotations)
+            target_printed = print_tree_node(resources, root, tree, depends_on, visited.copy(), "", is_last_root, False, resource_name, target_printed, longest_path, all_either_resources, show_descriptions, annotations, dependents_set, show_kind)
     
     # Don't print target at root if it wasn't printed - it should be under its most specific parent
     # Only print at root if it truly has no dependencies (which shouldn't happen for compute_instance)
@@ -352,13 +401,17 @@ def print_tree_node(
     longest_path: List[str] = None,
     either_resources: Set[str] = None,
     show_descriptions: bool = False,
-    annotations: Dict[str, str] = None
+    annotations: Dict[str, str] = None,
+    dependents_set: Set[str] = None,
+    show_kind: bool = False
 ) -> bool:
     """Recursively print a tree node showing dependencies top to bottom. Returns True if target was printed."""
     if either_resources is None:
         either_resources = set()
     if annotations is None:
         annotations = {}
+    if dependents_set is None:
+        dependents_set = set()
     
     if resource_name in visited:
         return target_printed
@@ -383,6 +436,9 @@ def print_tree_node(
     elif resource_name in either_resources:
         marker = "🔶"
         prefix = ""
+    elif resource_name in dependents_set:
+        marker = "🔻"
+        prefix = ""
     else:
         marker = "✅"
         prefix = ""
@@ -393,11 +449,18 @@ def print_tree_node(
     if annotation:
         annotation = f" {annotation}"
     
+    # Build kind suffix if requested
+    kind_suffix = ""
+    if show_kind:
+        kind = resource.get('kind', '')
+        if kind:
+            kind_suffix = f" [{kind}]"
+    
     if show_descriptions:
         desc = resource.get('description', 'N/A')
-        print(f"{indent}{connector}{marker} {prefix}{resource_name:20s}{annotation} - {desc}")
+        print(f"{indent}{connector}{marker} {prefix}{resource_name:20s}{kind_suffix}{annotation} - {desc}")
     else:
-        print(f"{indent}{connector}{marker} {prefix}{resource_name}{annotation}")
+        print(f"{indent}{connector}{marker} {prefix}{resource_name}{kind_suffix}{annotation}")
     
     # Get children (what depends on this resource)
     children = depends_on.get(resource_name, [])
@@ -504,7 +567,7 @@ def print_tree_node(
         # Check if there are either groups after this child
         has_either = len(either_groups) > 0
         is_last_child = (i == len(all_children) - 1) and not has_either
-        target_printed = print_tree_node(resources, child, tree, depends_on, visited, new_indent, is_last_child, is_opt_child, target, target_printed, longest_path, either_resources, show_descriptions, annotations)
+        target_printed = print_tree_node(resources, child, tree, depends_on, visited, new_indent, is_last_child, is_opt_child, target, target_printed, longest_path, either_resources, show_descriptions, annotations, dependents_set, show_kind)
     
     # Print "either" groups at the tail with 🔶 icon
     for group_idx, either_group in enumerate(either_groups):
@@ -516,26 +579,78 @@ def print_tree_node(
         for opt_idx, option in enumerate(either_group):
             is_last_opt = (opt_idx == len(either_group) - 1)
             opt_connector = "└── " if is_last_opt else "├── "
-            print(f"{group_indent}{opt_connector}{option}")
+            # Add kind suffix if requested
+            opt_kind_suffix = ""
+            if show_kind:
+                opt_resource = resources.get(option, {})
+                opt_kind = opt_resource.get('kind', '')
+                if opt_kind:
+                    opt_kind_suffix = f" [{opt_kind}]"
+            print(f"{group_indent}{opt_connector}{option}{opt_kind_suffix}")
     
     return target_printed
 
+def get_dependents(resources: Dict, resource_name: str) -> List[str]:
+    """
+    Find resources that depend on the given resource (children/dependents).
+    
+    Returns resources that have the target in their mandatory requirements.
+    """
+    dependents = []
+    for name, resource in resources.items():
+        if name == resource_name:
+            continue
+        
+        res_requires = resource.get('requires', {})
+        for dep in res_requires.get('mandatory', []):
+            if isinstance(dep, dict):
+                dep_name = list(dep.keys())[0]
+                if dep_name == resource_name:
+                    dependents.append(name)
+                    break
+            elif dep == resource_name:
+                dependents.append(name)
+                break
+    
+    return sorted(dependents)
+
+
+def get_all_dependents_recursive(resources: Dict, resource_name: str, collected: Set[str] = None) -> Set[str]:
+    """
+    Recursively find all resources that depend on the given resource (direct and transitive).
+    """
+    if collected is None:
+        collected = set()
+    
+    direct_dependents = get_dependents(resources, resource_name)
+    for dep in direct_dependents:
+        if dep not in collected:
+            collected.add(dep)
+            get_all_dependents_recursive(resources, dep, collected)
+    
+    return collected
+
+
 def main():
     if len(sys.argv) < 2:
-        print("Usage: check_dependencies.py <resource_name> [--with-descriptions|-d] [--direct] [--debug]")
+        print("Usage: check_dependencies.py <resource_name> [--with-descriptions|-d] [--source] [--siblings] [--kind] [--debug]")
         print("\nOptions:")
         print("  <resource_name>        Resource to check dependencies for (required)")
         print("  --with-descriptions    Show resource descriptions in output")
         print("  -d                     Short form of --with-descriptions")
-        print("  --direct               Show only direct dependencies (hide transitive)")
-        print("  --debug                Show debug info: why resources are hidden (use with --direct)")
+        print("  --source               Show only source dependencies (annotate transitive)")
+        print("  --siblings             Include dependents in tree (what depends on target)")
+        print("  --kind                 Show resource kind (e.g., oci://resource, oci://module)")
+        print("  --debug                Show debug info: why resources are hidden (use with --source)")
         print("\nExamples:")
         print("  ./bin/check_dependencies.py compute_instance")
         print("  ./bin/check_dependencies.py bastion --with-descriptions")
         print("  ./bin/check_dependencies.py subnet -d")
-        print("  ./bin/check_dependencies.py zone --direct")
-        print("  ./bin/check_dependencies.py compute_instance --direct --debug")
-        print("  ./bin/check_dependencies.py compute_instance --direct --with-descriptions")
+        print("  ./bin/check_dependencies.py zone --source")
+        print("  ./bin/check_dependencies.py compute_instance --source --debug")
+        print("  ./bin/check_dependencies.py app3_config --kind")
+        print("  ./bin/check_dependencies.py compute_instance --source --with-descriptions")
+        print("  ./bin/check_dependencies.py app3_config --siblings")
         print("\nAvailable resources:")
         script_dir = Path(__file__).parent
         yaml_path = script_dir.parent / "doc" / "resource_dependencies.yaml"
@@ -549,7 +664,9 @@ def main():
     
     resource_name = sys.argv[1]
     show_descriptions = '--with-descriptions' in sys.argv or '-d' in sys.argv
-    direct_only = '--direct' in sys.argv
+    direct_only = '--source' in sys.argv
+    show_siblings = '--siblings' in sys.argv
+    show_kind = '--kind' in sys.argv
     debug = '--debug' in sys.argv
     
     # Load YAML file
@@ -575,7 +692,7 @@ def main():
     optional.discard(resource_name)
     
     # Print results
-    print_dependencies(resource_name, mandatory, optional, resources, show_descriptions, direct_only, debug)
+    print_dependencies(resource_name, mandatory, optional, resources, show_descriptions, direct_only, debug, show_siblings, show_kind)
 
 if __name__ == '__main__':
     main()
