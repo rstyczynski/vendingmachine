@@ -68,9 +68,10 @@ resources:
     kind: oci://region
     type: config/yaml
     fqrn_scheme: "region://{tenancy}@{realm}/{region_name}"
+    embedded:
+      - realm
     requires:
-      mandatory:
-        - realm
+      mandatory: []
       optional: []
       provides: []
 
@@ -216,9 +217,10 @@ resources:
     kind: oci://resource
     type: config/terraform
     fqrn_scheme: "instance://{compartment_path}/{instance_name}"
+    embedded:
+      - vnic
     requires:
       mandatory:
-        - vnic
         - zone
         - either:
           - internet_gateway

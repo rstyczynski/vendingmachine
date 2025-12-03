@@ -153,6 +153,15 @@ def build_dependency_tree(
     resource = resources[resource_name]
     requires = resource.get('requires', {})
     
+    # Process embedded resources as implicit mandatory dependencies
+    # Embedded resources are tightly coupled with the parent
+    for embedded in resource.get('embedded', []):
+        if embedded not in tree[resource_name]['mandatory']:
+            tree[resource_name]['mandatory'].append(embedded)
+            # Recursively build tree for embedded resource
+            if not direct_only:
+                build_dependency_tree(resources, embedded, visited.copy(), tree, direct_only)
+    
     # Process mandatory dependencies
     for dep in requires.get('mandatory', []):
         if isinstance(dep, dict):
@@ -242,6 +251,7 @@ def print_dependencies(resource_name: str, mandatory: Set[str], optional: Set[st
     print("\n✅ = Mandatory dependency")
     print("🔹 = Optional dependency")
     print("🔶 = One of (choose one)")
+    print("📎 = Embedded resource (always with parent)")
     if show_siblings:
         print("🔻 = Dependent (depends on target)")
     print()
@@ -525,6 +535,20 @@ def print_tree_node(
     
     visited.add(resource_name)
     
+    # Check if this resource is embedded in another resource
+    # If so, skip printing it here - it will be printed as 📎 with its embedder
+    embedder = None
+    for res_name, res_data in resources.items():
+        if resource_name in res_data.get('embedded', []):
+            embedder = res_name
+            break
+    
+    if embedder is not None:
+        # This resource is embedded elsewhere - don't print it as a regular node
+        # Continue processing its children so the tree structure is maintained
+        # but let the embedder print it as 📎
+        pass  # We'll handle children below but skip printing this node
+    
     # Mark target as printed if this is the target
     if resource_name == target:
         target_printed = True
@@ -557,31 +581,67 @@ def print_tree_node(
         marker = "✅"
         prefix = ""
     
-    # Print current node with optional annotation
-    connector = "└── " if is_last else "├── "
-    annotation = annotations.get(resource_name, "")
-    if annotation:
-        annotation = f" {annotation}"
-    
-    # Build kind suffix if requested
-    kind_suffix = ""
-    if show_kind:
-        kind = resource.get('kind', '')
-        if kind:
-            kind_suffix = f" [{kind}]"
-    
-    # Build type suffix if requested
-    type_suffix = ""
-    if show_type:
-        res_type = resource.get('type', '')
-        if res_type:
-            type_suffix = f" <{res_type}>"
-    
-    if show_descriptions:
-        desc = resource.get('description', 'N/A')
-        print(f"{indent}{connector}{marker} {prefix}{resource_name:20s}{kind_suffix}{type_suffix}{annotation} - {desc}")
-    else:
-        print(f"{indent}{connector}{marker} {prefix}{resource_name}{kind_suffix}{type_suffix}{annotation}")
+    # Only print this node if it's NOT embedded elsewhere
+    # Embedded resources will be printed as 📎 by their embedder
+    if embedder is None:
+        # Check for embedded resources that must be printed directly above this resource
+        embedded_resources = resource.get('embedded', [])
+        
+        # Print embedded resources first (they appear directly above the owning resource)
+        for embedded_name in embedded_resources:
+            embedded_res = resources.get(embedded_name, {})
+            embedded_connector = "├── " if True else "└── "  # Always use ├── since main resource follows
+            embedded_annotation = annotations.get(embedded_name, "")
+            if embedded_annotation:
+                embedded_annotation = f" {embedded_annotation}"
+            
+            # Build suffixes for embedded resource
+            embedded_kind_suffix = ""
+            if show_kind:
+                embedded_kind = embedded_res.get('kind', '')
+                if embedded_kind:
+                    embedded_kind_suffix = f" [{embedded_kind}]"
+            
+            embedded_type_suffix = ""
+            if show_type:
+                embedded_type = embedded_res.get('type', '')
+                if embedded_type:
+                    embedded_type_suffix = f" <{embedded_type}>"
+            
+            # Mark as visited so it won't appear elsewhere
+            visited.add(embedded_name)
+            
+            if show_descriptions:
+                embedded_desc = embedded_res.get('description', 'N/A')
+                print(f"{indent}{embedded_connector}📎 {embedded_name:20s}{embedded_kind_suffix}{embedded_type_suffix}{embedded_annotation} - {embedded_desc}")
+            else:
+                print(f"{indent}{embedded_connector}📎 {embedded_name}{embedded_kind_suffix}{embedded_type_suffix}{embedded_annotation}")
+        
+        # Print current node with optional annotation
+        connector = "└── " if is_last else "├── "
+        annotation = annotations.get(resource_name, "")
+        if annotation:
+            annotation = f" {annotation}"
+        
+        # Build kind suffix if requested
+        kind_suffix = ""
+        if show_kind:
+            kind = resource.get('kind', '')
+            if kind:
+                kind_suffix = f" [{kind}]"
+        
+        # Build type suffix if requested
+        type_suffix = ""
+        if show_type:
+            res_type = resource.get('type', '')
+            if res_type:
+                type_suffix = f" <{res_type}>"
+        
+        if show_descriptions:
+            desc = resource.get('description', 'N/A')
+            print(f"{indent}{connector}{marker} {prefix}{resource_name:20s}{kind_suffix}{type_suffix}{annotation} - {desc}")
+        else:
+            print(f"{indent}{connector}{marker} {prefix}{resource_name}{kind_suffix}{type_suffix}{annotation}")
     
     # Get children (what depends on this resource)
     children = depends_on.get(resource_name, [])
@@ -801,8 +861,11 @@ def print_tree_node(
     mandatory_children.sort(key=get_child_priority)
     optional_children.sort(key=get_child_priority)
     
-    # Calculate new indent
-    new_indent = indent + ("    " if is_last else "│   ")
+    # Calculate new indent - only increase indent if we printed this node
+    if embedder is None:
+        new_indent = indent + ("    " if is_last else "│   ")
+    else:
+        new_indent = indent  # Don't increase indent for skipped (embedded) nodes
     
     # Combine all children in proper order
     seen = set()
@@ -966,7 +1029,7 @@ def main():
         print("  ./bin/check_dependencies.py app3_config --siblings")
         print("\nAvailable resources:")
         script_dir = Path(__file__).parent
-        yaml_path = script_dir.parent / "doc" / "resource_dependencies.yaml"
+        yaml_path = script_dir.parent / "etc" / "resource_dependencies.yaml"
         if yaml_path.exists():
             with open(yaml_path, 'r') as f:
                 data = yaml.safe_load(f)
@@ -997,7 +1060,7 @@ def main():
     
     # Load YAML file
     script_dir = Path(__file__).parent
-    yaml_path = script_dir.parent / "doc" / "resource_dependencies.yaml"
+    yaml_path = script_dir.parent / "etc" / "resource_dependencies.yaml"
     
     if not yaml_path.exists():
         print(f"Error: {yaml_path} not found")
