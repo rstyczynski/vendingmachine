@@ -8,7 +8,9 @@ Instruction for Developer: keep analysis, design and implementation as simple as
 
 ## Sprint 1 - Review of current codebase
 
-Status: Planned
+Status: Progress
+
+Mode: Managed
 
 Backlog Items:
 
