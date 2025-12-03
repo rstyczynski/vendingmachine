@@ -1,0 +1,15 @@
+# ═══════════════════════════════════════════════════════════════
+# ${upper(name)} Zone Configuration
+# Logical groupings of subnet, availability domain, and bastion
+#
+# OWNERSHIP: Zone does NOT create subnets or bastions.
+#            These resources must exist in advance.
+# ═══════════════════════════════════════════════════════════════
+
+${name}_zones = {
+  "zone://${compartment_path}/${name}" = {
+    subnet_fqrn  = "${subnet_fqrn}"     # Subnet FQRN
+    bastion_fqrn = "${bastion_fqrn}"    # Bastion FQRN (optional)
+    ad           = ${ad}                    # Availability domain: 0, 1, or 2
+  }
+}

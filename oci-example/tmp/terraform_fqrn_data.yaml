@@ -14,14 +14,12 @@ shared_modules:
 - name: subnets
   var_name: subnets_fqrns
   for_each: true
+- name: infra_zones
+  var_name: infra_zones_fqrns
+  for_each: true
 apps:
   app1:
   - name: app1_compute_instances
   - name: app1_nsgs
   app2:
-  - name: app2_compute_instances
   - name: app2_nsgs
-  app3:
-  - name: app3_compute_instances
-  app4:
-  - name: app4_compute_instances

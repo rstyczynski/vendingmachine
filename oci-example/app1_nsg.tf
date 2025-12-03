@@ -11,7 +11,6 @@ module "app1_nsgs" {
   # All dependencies are automatically inferred from fqrn_map references
 }
 
-
 variable "app1_nsgs" {
   description = "Map of APP1 Network Security Groups, indexed by NSG FQRN"
   type = map(object({

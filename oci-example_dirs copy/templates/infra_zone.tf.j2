@@ -1,0 +1,94 @@
+# ═══════════════════════════════════════════════════════════════
+# {{ name.upper() }} Zone Module Instances
+# Logical groupings of subnet, availability domain, and bastion
+#
+# OWNERSHIP: Zone does NOT create subnets or bastions.
+#            These resources must exist in advance.
+# ═══════════════════════════════════════════════════════════════
+
+module "{{ name }}_zones" {
+  source   = "./modules/zone"
+  for_each = local.{{ name }}_zones_var2hcl
+
+  # Pass locals (from proxy layer), NOT variables directly
+  zone_fqrn    = each.key
+  subnet_fqrn  = each.value.subnet_fqrn
+  bastion_fqrn = each.value.bastion_fqrn
+  ad           = each.value.ad
+  fqrn_map     = local.infra_fqrns # Infrastructure FQRNs: compartments, VCN, subnet, bastion (from terraform_fqrn.tf)
+
+  depends_on = [
+    module.subnets,
+    module.bastions
+  ]
+}
+
+# ═══════════════════════════════════════════════════════════════
+# {{ name.upper() }} Zone Variables
+# ═══════════════════════════════════════════════════════════════
+
+variable "{{ name }}_zones" {
+  description = "Map of {{ name.upper() }} zones to create, indexed by zone FQRN (e.g., zone://vm_demo/demo/app)"
+  type = map(object({
+    subnet_fqrn  = string           # Subnet FQRN: sub://compartment_path/vcn_name/subnet_name
+    bastion_fqrn = optional(string) # Bastion FQRN: bastion://compartment_path/bastion_name
+    ad           = number           # Availability domain: 0, 1, or 2
+  }))
+  default = {}
+}
+
+# Default var2hcl transformation logic
+locals {
+  # Default proxy layer: Transform {{ name.upper() }} zone variables into locals
+  {{ name }}_zones_var2hcl_default = {
+    for k, v in var.{{ name }}_zones : k => {
+      zone_fqrn    = k
+      subnet_fqrn  = v.subnet_fqrn
+      bastion_fqrn = v.bastion_fqrn
+      ad           = v.ad
+    }
+  }
+
+  # Custom var2hcl logic (optional - defined in {{ name }}_zone_custom.tf if needed)
+  # If {{ name }}_zone_custom.tf exists, it should define {{ name }}_zones_var2hcl_custom
+  # which will override the default. If not defined, use default.
+
+  # Final var2hcl: Use custom override if provided (from {{ name }}_zone_custom.tf), otherwise use default
+  {{ name }}_zones_var2hcl = length(keys(local.{{ name }}_zones_var2hcl_custom)) > 0 ? local.{{ name }}_zones_var2hcl_custom : local.{{ name }}_zones_var2hcl_default
+}
+
+# ═══════════════════════════════════════════════════════════════
+# {{ name.upper() }} Zone Outputs
+# ═══════════════════════════════════════════════════════════════
+
+output "{{ name }}_zones" {
+  description = "{{ name.upper() }} Zone details"
+  value = {
+    for k, m in module.{{ name }}_zones : k => {
+      zone_fqrn        = m.zone_fqrn
+      name             = m.name
+      compartment_fqrn = m.compartment_fqrn
+      compartment_id   = m.compartment_id
+      subnet_fqrn      = m.subnet_fqrn
+      subnet_id        = m.subnet_id
+      bastion_fqrn     = m.bastion_fqrn
+      bastion_id       = m.bastion_id
+      ad               = m.ad
+    }
+  }
+}
+
+# Aggregated {{ name.upper() }} zones map for compute instances
+output "{{ name }}_zones_map" {
+  description = "{{ name.upper() }} Zones map compatible with compute_instance module"
+  value = merge([
+    for k, m in module.{{ name }}_zones : m.zones_map_entry
+  ]...)
+}
+
+# {{ name.upper() }} Zone FQRN map entries (for unified FQRN map aggregation)
+locals {
+  {{ name }}_zone_fqrn_map = merge([
+    for k, m in module.{{ name }}_zones : m.fqrn_map
+  ]...)
+}

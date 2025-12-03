@@ -1,0 +1,269 @@
+# ═══════════════════════════════════════════════════════════════
+# OCI Vending Machine - Resource requires
+# 
+# This YAML file defines the dependency structure for all resources.
+# It specifies what resources are required (mandatory) and optional
+# when creating a new resource.
+# ═══════════════════════════════════════════════════════════════
+
+resources:
+  # ═══════════════════════════════════════════════════════════════
+  # Foundation Resources (no requires)
+  # ═══════════════════════════════════════════════════════════════
+
+  contract:
+    description: "OCI connection configuration"
+    kind: oci://contract
+    type: config/yaml
+    fqrn_scheme: "oci://{tenancy}@{realm}/contract"
+
+    requires:
+      mandatory: []
+      optional: []
+    provides:
+      - realm
+      - tenancy
+
+  realm:
+    description: "OCI Realm - top-level organizational boundary (e.g., oc1, oc2, oc3)"
+    kind: oci://contract
+    type: config/yaml
+    fqrn_scheme: "oci://{tenancy}@{realm}/contract/realm"
+    requires:
+      mandatory:
+        - contract
+      optional: []
+    provides:
+      - region
+
+  tenancy:
+    description: "OCI Tenancy - root level resource"
+    kind: oci://contract
+    type: config/yaml
+    fqrn_scheme: "oci://{tenancy}@{realm}/contract/tenancy"
+    requires:
+      mandatory:
+        - realm
+      optional: []
+    provides: []
+
+  region:
+    description: "OCI Region - defines where resources are created"
+    kind: oci://region
+    type: text
+    fqrn_scheme: "region://{tenancy}@{realm}/{region_name}"
+    requires:
+      mandatory:
+        - tenancy
+      optional: []
+      provides:
+        - tenancy
+        - realm
+
+
+  # ═══════════════════════════════════════════════════════════════
+  # Zone Resources (Logical Grouping)
+  # ═══════════════════════════════════════════════════════════════
+
+  zone:
+    description: "Zone - logical grouping of subnet and availability domain"
+    kind: oci://module
+    type: bin/terraform
+    fqrn_scheme: "zone://{compartment_path}/{zone_name}?region={region}"
+    requires:
+      mandatory:
+        - subnet
+        - bastion
+      optional: []
+    provides:
+      - availability_domain
+      - subnet
+      - bastion
+
+  # ═══════════════════════════════════════════════════════════════
+  # Identity Resources
+  # ═══════════════════════════════════════════════════════════════
+
+  compartment:
+    description: "OCI Compartment - logical grouping of resources (inter-region resource)"
+    kind: oci://resource
+    type: bin/terraform
+    fqrn_scheme: "cmp://{tenancy}@{realm}/{compartment_path}"
+
+    requires:
+      mandatory:
+        - tenancy
+      optional: []
+    provides: []
+
+  # ═══════════════════════════════════════════════════════════════
+  # Logging Resources
+  # ═══════════════════════════════════════════════════════════════
+
+  log_group:
+    description: "OCI Log Group - container for log objects"
+    kind: oci://resource
+    type: bin/terraform
+    fqrn_scheme: "log_group://{compartment_path}/{name}"
+    requires:
+      mandatory:
+        - compartment
+      optional: []
+    provides: []
+
+  # ═══════════════════════════════════════════════════════════════
+  # Network Resources
+  # ═══════════════════════════════════════════════════════════════
+
+  vcn:
+    description: "Virtual Cloud Network - isolated network environment"
+    kind: oci://resource
+    type: bin/terraform
+    fqrn_scheme: "vcn://{compartment_path}/{vcn_name}"
+    requires:
+      mandatory:
+        - compartment
+        - region
+      optional:
+        - internet_gateway
+        - nat_gateway
+    provides:
+      - service_gateway
+
+  internet_gateway:
+    description: "Internet Gateway - provides public internet access for VCN"
+    kind: oci://resource
+    type: bin/terraform
+    fqrn_scheme: "igw://{compartment_path}/{vcn_name}/{igw_name}"
+    requires:
+      mandatory:
+        - compartment
+        - vcn
+      optional: []
+    provides: []
+
+  nat_gateway:
+    description: "NAT Gateway - provides internet access for private subnets"
+    kind: oci://resource
+    type: bin/terraform
+    fqrn_scheme: "nat://{compartment_path}/{vcn_name}/{nat_name}"
+    requires:
+      mandatory:
+        - compartment
+        - vcn
+      optional: []
+    provides: []
+
+  service_gateway:
+    description: "Service Gateway - provides access to OCI services"
+    kind: oci://resource
+    type: bin/terraform
+    fqrn_scheme: "sgw://{compartment_path}/{vcn_name}/{sgw_name}"
+    requires:
+      mandatory:
+        - compartment
+        - vcn
+      optional: []
+    provides: []
+
+  subnet:
+    description: "Subnet - IP address range within a VCN"
+    kind: oci://resource
+    type: bin/terraform
+    fqrn_scheme: "sub://{compartment_path}/{vcn_name}/{subnet_name}"
+    requires:
+      mandatory:
+        - compartment
+        - vcn
+      optional:
+        - log_group: "For VCN flow logs (enable_flow_log = true)"
+    provides: []
+
+  nsg:
+    description: "Network Security Group - firewall rules for network traffic"
+    kind: oci://resource
+    type: bin/terraform
+    fqrn_scheme: "nsg://{compartment_path}/{vcn_name}/{nsg_name}"
+    requires:
+      mandatory:
+        - compartment
+        - vcn
+      optional: []
+    provides: []
+
+  # ═══════════════════════════════════════════════════════════════
+  # Compute Resources
+  # ═══════════════════════════════════════════════════════════════
+
+  compute_instance:
+    description: "Compute Instance - virtual machine"
+    kind: oci://resource
+    type: bin/terraform
+    fqrn_scheme: "instance://{compartment_path}/{instance_name}"
+    requires:
+      mandatory:
+        - zone: "Required for subnet and availability domain"
+        - either:
+          - internet_gateway
+          - nat_gateway
+          - bastion
+      optional:
+        - nsg: "Network Security Groups for firewall rules (can specify multiple)"
+    provides: []
+
+
+  # ═══════════════════════════════════════════════════════════════
+  # Security Resources
+  # ═══════════════════════════════════════════════════════════════
+
+  bastion:
+    description: "OCI Bastion Service - secure access to private resources"
+    kind: oci://resource
+    type: bin/terraform
+    fqrn_scheme: "bastion://{compartment_path}/{bastion_name}"
+    requires:
+      mandatory:
+        - subnet: "Target subnet for bastion sessions"
+        - service_gateway
+        - either:
+          - internet_gateway
+          - nat_gateway
+      optional: []
+    provides: []
+
+  app1:
+    description: "APP1 - application layer"
+    kind: oci://module
+    type: config/yaml
+    fqrn_scheme: "app1://{compartment_path}/{app2_name}"
+    requires:
+      mandatory: 
+        - zone
+        - bastion
+    provides:
+      - app1_web
+      - app1_db
+
+  app1_db:
+    description: "APP1 - web layer"
+    kind: app://application
+    type: bin/terraform
+    fqrn_scheme: "app1://{compartment_path}/{app_name}/web"
+    requires:
+      mandatory:
+        - app1
+    provides: []
+
+  app1_web:
+    description: "APP1 - web layer"
+    kind: app://application
+    type: bin/terraform
+    fqrn_scheme: "app1://{compartment_path}/{app_name}/web"
+    requires:
+      mandatory:
+        - app1
+    provides: []
+
+
+
+

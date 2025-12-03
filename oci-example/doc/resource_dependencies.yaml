@@ -24,6 +24,21 @@ resources:
       - realm
       - tenancy
 
+  profile:
+    description: "OCI Profile - authentication profile"
+    kind: oci://profile
+    type: config/yaml
+    fqrn_scheme: "oci://{tenancy}@{realm}/user/profile"
+    requires:
+      mandatory:
+        - region
+      optional: []
+    provides:
+      - realm
+      - tenancy
+      - region
+  
+
   realm:
     description: "OCI Realm - top-level organizational boundary (e.g., oc1, oc2, oc3)"
     kind: oci://contract
@@ -43,6 +58,7 @@ resources:
     fqrn_scheme: "oci://{tenancy}@{realm}/contract/tenancy"
     requires:
       mandatory:
+        - profile
         - realm
       optional: []
     provides: []
@@ -54,11 +70,10 @@ resources:
     fqrn_scheme: "region://{tenancy}@{realm}/{region_name}"
     requires:
       mandatory:
-        - tenancy
-      optional: []
-      provides:
-        - tenancy
         - realm
+      optional: []
+      provides: []
+
 
 
   # ═══════════════════════════════════════════════════════════════
@@ -73,10 +88,12 @@ resources:
     requires:
       mandatory:
         - subnet
+      optional:
         - bastion
-      optional: []
     provides:
       - availability_domain
+      - subnet
+      - bastion
 
   # ═══════════════════════════════════════════════════════════════
   # Identity Resources
@@ -120,13 +137,13 @@ resources:
     fqrn_scheme: "vcn://{compartment_path}/{vcn_name}"
     requires:
       mandatory:
-        - compartment
         - region
-      optional:
-        - internet_gateway
-        - nat_gateway
+        - compartment
+      optional: []
     provides:
       - service_gateway
+      - internet_gateway
+      - nat_gateway
 
   internet_gateway:
     description: "Internet Gateway - provides public internet access for VCN"
@@ -171,8 +188,9 @@ resources:
     fqrn_scheme: "sub://{compartment_path}/{vcn_name}/{subnet_name}"
     requires:
       mandatory:
-        - compartment
         - vcn
+        - compartment
+
       optional:
         - log_group: "For VCN flow logs (enable_flow_log = true)"
     provides: []
@@ -221,7 +239,7 @@ resources:
     fqrn_scheme: "bastion://{compartment_path}/{bastion_name}"
     requires:
       mandatory:
-        - subnet: "Target subnet for bastion sessions"
+        - subnet
         - service_gateway
         - either:
           - internet_gateway

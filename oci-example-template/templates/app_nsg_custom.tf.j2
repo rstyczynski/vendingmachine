@@ -1,0 +1,26 @@
+# ═══════════════════════════════════════════════════════════════
+# Custom Variable Proxy Layer: ${upper(app_name)} Network Security Groups
+# 
+# This file is OPTIONAL. If this file exists, it will override the
+# default var2hcl logic from ${app_name}_nsg.tf
+# ═══════════════════════════════════════════════════════════════
+
+locals {
+  # Custom proxy layer: Transform ${upper(app_name)} NSG variables into locals
+  # This will override the default var2hcl logic from ${app_name}_nsg.tf
+  # 
+  # Add your custom transformation logic here:
+  # - Transform values (e.g., normalize, add defaults)
+  # - Add computed fields
+  # - Apply business logic rules
+  # - Merge with additional data sources
+  ${app_name}_nsgs_var2hcl_custom = {
+    for k, v in var.${app_name}_nsgs : k => {
+      nsg_fqrn = k
+      rules    = v.rules
+      # Example: Add custom transformations
+      # custom_field = "value"
+    }
+  }
+}
+

@@ -1,0 +1,168 @@
+# ═══════════════════════════════════════════════════════════════
+# APP1 Compute Instances Configuration
+# ═══════════════════════════════════════════════════════════════
+
+app1_compute_instances = {
+  "instance://team1/app1_instance" = {
+    zone = "zone://team1/infra" # Zone map key reference (for subnet, AD)
+    
+    nsg  = [] # NSG FQRN list (co-resource) - can reference any app NSGs
+
+    spec = {
+      shape                   = "VM.Standard.E4.Flex"
+      ocpus                   = 1
+      memory_in_gbs           = 16
+      assign_public_ip        = false
+      ssh_public_key          = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDi7dWcWn0+ciNUI35ItsmchDxEV8+HyRmVvGVo1I9gbDI7Y+k4KkW1fdls1YfgzuLdah61SLvlnSRjG6D33EmaKL6l9GjzLIFNDPR9InTT2iPBGzm/bVy6jXYBT5+r4Yriw3ggxeudu6vkSxjBzXch3Dgkj58xcHt9qRbVPp9iEnBbBvBEHEuJ+Gnx4xBDhXS/ZXANwAAfgO/Y0SNSzjsOoFCG8diBJ3gT6fyIVrMxVHFk7n21k7Ef4SaYv6uV8xy2rGg3d/ji+AUjQMQircO8uLlNp6PvkpJi2PA/4vebpJETTMfZP/2kVV97Xa8eQEQC4soLQb6V1GlZACKUSDME7im2wEL39KkGJi1EVGSUjXWdk3Y19j+6+mxW5K5zSQezdzFiktl1pA14C/0cio+QN/Pdl02afJjOdvdeaO5CHYUpsXnt1WC3wOOkW9A1SkM8gmB/Af0EhCQLd4y5YWqPQENFW3w1g6l2TMDEv3Npj+eDN92PqmLJ5E6KBp3Hs8JI3+1XAZzJqp3h9+strqVpnb26pBzv8BFeM/kvcmnMCcA4gdtAq4YE4M2dpcalDANtwnSBe8IlO1LimIvFjaRW0JqJteB0dF5j2SpNeEvLbl8RVzwizBJnQiTkLER7E3HeTtzoF8CgTCcUaS+SEPbvLQ2k6wqeOpHDzoCwWO4Obw== rstyczynski@rstyczynski-mac"
+      boot_volume_size_in_gbs = 50
+      enable_bastion_plugin   = false # Enable Oracle Cloud Agent Bastion plugin for secure access
+    }
+  }
+}
+app1_nsgs = {
+  "nsg://team1/demo_vcn/ssh" = {
+    rules = {
+      ssh_ingress = {
+        direction   = "INGRESS"
+        protocol    = "6" # TCP
+        source      = "0.0.0.0/0"
+        source_type = "CIDR_BLOCK"
+        description = "Allow SSH from anywhere"
+        tcp_options = {
+          destination_port_min = 22
+          destination_port_max = 22
+        }
+      }
+
+      all_egress = {
+        direction        = "EGRESS"
+        protocol         = "all"
+        destination      = "0.0.0.0/0"
+        destination_type = "CIDR_BLOCK"
+        description      = "Allow all egress traffic"
+      }
+    }
+  }
+}
+app2_nsgs = {
+  "nsg://team1/demo_vcn/app2_web" = {
+    rules = {
+      http_ingress = {
+        direction   = "INGRESS"
+        protocol    = "6" # TCP
+        source      = "0.0.0.0/0"
+        source_type = "CIDR_BLOCK"
+        description = "Allow HTTP from anywhere"
+        tcp_options = {
+          destination_port_min = 80
+          destination_port_max = 80
+        }
+      }
+      https_ingress = {
+        direction   = "INGRESS"
+        protocol    = "6" # TCP
+        source      = "0.0.0.0/0"
+        source_type = "CIDR_BLOCK"
+        description = "Allow HTTPS from anywhere"
+        tcp_options = {
+          destination_port_min = 443
+          destination_port_max = 443
+        }
+      }
+      all_egress = {
+        direction        = "EGRESS"
+        protocol         = "all"
+        destination      = "0.0.0.0/0"
+        destination_type = "CIDR_BLOCK"
+        description      = "Allow all egress traffic"
+      }
+    }
+  }
+}
+bastions = {
+  "bastion://team1/demo_bastion" = {
+    target_subnet_fqrn            = "sub://team1/demo_vcn/subnet" # Subnet FQRN that bastion connects to
+    bastion_type                   = "STANDARD"                                  # Type of bastion
+    client_cidr_block_allow_list   = ["0.0.0.0/0"]                                          # Empty list allows all (or specify CIDR blocks)
+    max_session_ttl_in_seconds     = 10800                                       # 3 hours
+    dns_proxy_status               = "DISABLED"                                   # DNS proxy status
+  }
+}
+
+# Compartments Map
+compartments = {
+  "cmp:///team1" = {
+    description   = "Demo Compartment"
+    enable_delete = false
+  },
+  "cmp:///team12" = {
+    description   = "Demo Compartment"
+    enable_delete = false
+  }
+}
+
+log_groups = {
+  "log_group://team1/demo_log_group" = {
+    description = "Log group for VCN flow logs"
+  }
+}
+vcns = {
+  "vcn://team1/demo_vcn" = {
+    cidr_blocks             = ["10.0.0.0/16"]
+    dns_label               = "demovcn"
+    create_internet_gateway = false
+    create_nat_gateway      = true
+    create_service_gateway  = true  # Enable service gateway for OCI services access
+    service_gateway_services = []   # Empty list = all services
+  }
+}
+
+# Subnets Map
+subnets = {
+  "sub://team1/demo_vcn/subnet" = {
+    cidr_block                 = "10.0.1.0/24"
+    dns_label                  = "publicsubnet"
+    prohibit_public_ip_on_vnic = true
+    enable_flow_log            = true
+    flow_log_log_group_fqrn    = "log_group://team1/demo_log_group"
+  }
+}
+
+
+tenancy = "tenancy://oc1/avg3"
+region = "region://oc1/eu-zurich-1"
+
+tenancies = {
+  "tenancy://oc1/avg3" = {
+    description  = "VM Demo Tenancy"
+    tenancy_ocid = "ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a" # Replace with your actual tenancy OCID
+  }
+}
+
+regions = {
+  "region://oc1/eu-zurich-1" = {
+    description = "Zurich Region"
+  }
+}
+# ═══════════════════════════════════════════════════════════════
+# INFRA Zone Configuration
+# Logical groupings of subnet, availability domain, and bastion
+#
+# OWNERSHIP: Zone does NOT create subnets or bastions.
+#            These resources must exist in advance.
+# ═══════════════════════════════════════════════════════════════
+
+infra_zones = {
+  "zone://team1/infra" = {
+    subnet_fqrn  = "sub://team1/demo_vcn/subnet"     # Subnet FQRN
+    bastion_fqrn = "bastion://team1/demo_bastion"    # Bastion FQRN (optional)
+    ad           = 0                                         # Availability domain: 0, 1, or 2
+  }
+
+  # Add more zones as needed:
+  # "zone://team1/infra_zone2" = {
+  #   subnet_fqrn  = "sub://team1/demo_vcn/subnet2"
+  #   bastion_fqrn = "bastion://team1/demo_bastion"
+  #   ad           = 1
+  # }
+}

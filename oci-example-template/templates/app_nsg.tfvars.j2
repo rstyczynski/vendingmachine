@@ -1,0 +1,75 @@
+# ═══════════════════════════════════════════════════════════════
+# ${upper(app_name)} Network Security Groups Configuration
+# ═══════════════════════════════════════════════════════════════
+
+${app_name}_nsgs = {
+%{ for nsg_name, nsg in nsgs ~}
+  "nsg://${nsg.compartment_path}/${nsg_name}" = {
+    rules = {
+%{ for rule_name, rule in nsg.rules ~}
+      ${rule_name} = {
+        direction        = "${rule.direction}"
+        protocol         = "${rule.protocol}"
+%{ if rule.source != null ~}
+        source           = "${rule.source}"
+%{ endif ~}
+%{ if rule.source_type != null ~}
+        source_type      = "${rule.source_type}"
+%{ endif ~}
+%{ if rule.destination != null ~}
+        destination      = "${rule.destination}"
+%{ endif ~}
+%{ if rule.destination_type != null ~}
+        destination_type = "${rule.destination_type}"
+%{ endif ~}
+%{ if rule.description != null ~}
+        description      = "${rule.description}"
+%{ endif ~}
+%{ if rule.tcp_options != null ~}
+        tcp_options = {
+%{ if rule.tcp_options.destination_port_min != null ~}
+          destination_port_min = ${rule.tcp_options.destination_port_min}
+%{ endif ~}
+%{ if rule.tcp_options.destination_port_max != null ~}
+          destination_port_max = ${rule.tcp_options.destination_port_max}
+%{ endif ~}
+%{ if rule.tcp_options.source_port_min != null ~}
+          source_port_min      = ${rule.tcp_options.source_port_min}
+%{ endif ~}
+%{ if rule.tcp_options.source_port_max != null ~}
+          source_port_max      = ${rule.tcp_options.source_port_max}
+%{ endif ~}
+        }
+%{ endif ~}
+%{ if rule.udp_options != null ~}
+        udp_options = {
+%{ if rule.udp_options.destination_port_min != null ~}
+          destination_port_min = ${rule.udp_options.destination_port_min}
+%{ endif ~}
+%{ if rule.udp_options.destination_port_max != null ~}
+          destination_port_max = ${rule.udp_options.destination_port_max}
+%{ endif ~}
+%{ if rule.udp_options.source_port_min != null ~}
+          source_port_min      = ${rule.udp_options.source_port_min}
+%{ endif ~}
+%{ if rule.udp_options.source_port_max != null ~}
+          source_port_max      = ${rule.udp_options.source_port_max}
+%{ endif ~}
+        }
+%{ endif ~}
+%{ if rule.icmp_options != null ~}
+        icmp_options = {
+          type = ${rule.icmp_options.type}
+%{ if rule.icmp_options.code != null ~}
+          code = ${rule.icmp_options.code}
+%{ endif ~}
+        }
+%{ endif ~}
+      }
+%{ endfor ~}
+    }
+  }
+
+%{ endfor ~}
+}
+

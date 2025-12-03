@@ -1,0 +1,23 @@
+# ═══════════════════════════════════════════════════════════════
+# ${upper(app_name)} Compute Instances Configuration
+# ═══════════════════════════════════════════════════════════════
+
+${app_name}_compute_instances = {
+%{ for instance_name, instance in instances ~}
+  "instance://${compartment_path}/${instance_name}" = {
+    zone = "${zone}"
+    nsg  = ${jsonencode(instance.nsg)}
+
+    spec = {
+      shape                   = "${instance.shape}"
+      ocpus                   = ${instance.ocpus}
+      memory_in_gbs           = ${instance.memory_in_gbs}
+      assign_public_ip        = ${instance.assign_public_ip}
+      ssh_public_key          = "${instance.ssh_public_key}"
+      boot_volume_size_in_gbs = ${instance.boot_volume_size_in_gbs}
+      enable_bastion_plugin   = ${instance.enable_bastion_plugin}
+    }
+  }
+
+%{ endfor ~}
+  }
