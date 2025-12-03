@@ -4,6 +4,31 @@
 
 **Purpose**: Analyze how resource arguments should be sourced to inform architecture and catalog schema design.
 
+**Phase**: Inception (High-Level Design)
+
+## References
+
+This analysis is grounded in Oracle Cloud Infrastructure best practices:
+
+- **[Foundational OCI Governance Model](https://docs.oracle.com/en/solutions/foundational-oci-governance-model/index.html)** - Oracle's framework for governance, policy enforcement, and structured provisioning in cloud environments. Key principles from this model:
+  - Identity & Access Management (IAM) policies and tagging
+  - Resource organization through compartmentalization
+  - Security controls (protective and detective)
+  - Cost management (service limits, budgets, quotas)
+  - Compliance requirements (HIPAA, FedRAMP, GDPR, CCPA)
+  - Iterative operational model: organize → govern → observe/monitor → improve
+
+## Governance as Preliminary Concept
+
+**Important**: Governance is not currently represented in the initial resource dependency map (`etc/resource_dependencies.yaml`), but it should be understood as a **preliminary, cross-cutting concern** that precedes all resource provisioning.
+
+In the Oracle governance model, provisioning is a foundational step that occurs *after* governance boundaries are established. Cloud Vending Machine must recognize that:
+- Governance policies are established *before* resource selection
+- All provisioned resources operate *within* governance boundaries
+- Parameters are constrained by governance *before* user input is collected
+
+**Design Implication**: Future architecture must model governance as a preliminary phase, not as peer-level resource dependencies.
+
 ## Executive Summary
 
 Cloud Vending Machine resources require arguments from four distinct sources:
@@ -130,19 +155,10 @@ display_name:
         description: "Fallback: Free-form name if no convention defined"
 ```
 
-**Code Generation**:
-```hcl
-# If governance policy exists:
-display_name = format("%s-%s-%s-%02d",
-  var.environment,    # Governed
-  var.application,    # Governed
-  var.component,      # User choice within app
-  var.sequence        # User choice
-)
-
-# If no policy:
-display_name = var.display_name  # Free user input
-```
+**Code Generation Pattern** (Conceptual):
+- **With governance policy**: Generate code that enforces naming convention pattern (e.g., format string with governed variables)
+- **Without policy**: Generate code accepting free-form user input
+- Implementation will use Terraform's `format()` or validation rules
 
 #### Tags and Metadata
 
@@ -194,19 +210,10 @@ tags:
       type: map(string)
 ```
 
-**Code Generation**:
-```hcl
-freeform_tags = merge(
-  {
-    # Mandatory governance tags
-    "CostCenter"             = var.cost_center              # Governance
-    "Environment"            = var.environment              # Governance
-    "SecurityClassification" = var.security_classification  # Governance
-    "DataResidency"          = var.data_residency          # Governance
-  },
-  var.additional_tags  # User's optional tags
-)
-```
+**Code Generation Pattern** (Conceptual):
+- **Mandatory tags**: Generated from governance-required variables (CostCenter, Environment, SecurityClassification, DataResidency)
+- **Optional tags**: Merged from user-provided additional tags
+- Implementation will use Terraform's `merge()` function to combine governance + user tags
 
 #### Boolean Flags (Security/Policy)
 
@@ -242,25 +249,11 @@ assign_public_ip:
         description: "Assign public IP (allowed in non-production only)"
 ```
 
-**Code Generation with Policy**:
-```hcl
-locals {
-  # Security policy: No public IPs in production
-  security_policy_no_public_ip = var.environment == "Production" ? false : null
-
-  # Final value: Policy takes precedence over user input
-  assign_public_ip = coalesce(
-    local.security_policy_no_public_ip,  # Policy first
-    var.user_assign_public_ip            # User choice if no policy
-  )
-}
-
-resource "oci_compute_instance" "app" {
-  create_vnic_details {
-    assign_public_ip = local.assign_public_ip
-  }
-}
-```
+**Code Generation Pattern** (Conceptual):
+- **Policy evaluation**: Check if governance policy applies (e.g., "no public IPs in production")
+- **Precedence logic**: Policy value takes precedence, fallback to user input if no policy
+- **Implementation approach**: Use Terraform conditionals (`condition ? true_val : false_val`) and precedence functions (e.g., `coalesce()`)
+- **Result**: Generated code enforces policy at infrastructure level, not just UI validation
 
 #### Enums (Shapes, Regions) - Standardization
 
@@ -301,26 +294,11 @@ shape:
           source: oci_api  # Query available shapes from OCI
 ```
 
-**Code Generation**:
-```hcl
-variable "shape" {
-  type        = string
-  description = "Instance shape - must be from approved list"
-
-  validation {
-    condition     = contains(local.approved_shapes[var.environment], var.shape)
-    error_message = "Shape must be from platform team's approved list for ${var.environment}"
-  }
-}
-
-locals {
-  # Platform team approved shapes per environment
-  approved_shapes = {
-    development = ["VM.Standard.E4.Flex", "VM.Standard3.Flex"]
-    production  = ["VM.Standard.E4.Flex", "VM.DenseIO.E4.Flex"]
-  }
-}
-```
+**Code Generation Pattern** (Conceptual):
+- **Approved lists**: Define environment-specific approved values (shapes per environment, allowed regions per data classification)
+- **Validation**: Generate Terraform variable validation rules to enforce approved lists
+- **User selection**: User selects from approved list, not free choice
+- **Implementation approach**: Use Terraform `validation` blocks with `contains()` checks
 
 **Example: Regions**
 
@@ -783,10 +761,11 @@ app:
 | Security rules, policies | Resource Owner (Security Team) | User Input |
 | SSH keys, credentials | Resource Owner (Security Team) | - |
 | Resource IDs (OCID) | Existing Infrastructure or Deployed Resource | - |
-| Display names, tags | User Input | - |
+| Display names | Resource Owner (Governance - Naming Convention) | User Input |
+| Tags | Resource Owner (Governance/Finance/Compliance) | User Input (additional) |
 | Configuration files | Resource Owner (App/Platform Team) | - |
-| Boolean flags | User Input | Resource Owner (Policy) |
-| Enums (shapes, regions) | User Input | Resource Owner (Standardization) |
+| Boolean flags | Resource Owner (Policy) | User Input |
+| Enums (shapes, regions) | Resource Owner (Standardization) | User Input |
 
 ---
 
@@ -968,170 +947,57 @@ resource_owners:
       - app_db.configuration
 ```
 
-### 3. Code Generation Strategy
+### 3. Code Generation Strategy (Conceptual Patterns)
 
-#### For Deployed Resources (Intra-Deployment References)
+#### Pattern 1: Deployed Resources (Intra-Deployment References)
+- **Approach**: Generate Terraform references using `${resource_type.resource_name.attribute}` syntax
+- **Example**: Subnet references VCN via `oci_core_vcn.main.id`
+- **Dependency handling**: Respect dependency tree order (VCN before subnet)
 
-**Input** (user request):
-```yaml
-deployment:
-  resources:
-    - vcn: "main"
-    - subnet: "web-subnet"
-```
+#### Pattern 2: Existing Infrastructure
+- **Approach**: Generate Terraform data sources (`data "oci_identity_compartment" "existing"`)
+- **User provides**: Identifier (OCID, name, or filter criteria)
+- **Code references**: Data source attributes (`data.oci_identity_compartment.existing.id`)
 
-**Generated Terraform**:
-```hcl
-resource "oci_core_vcn" "main" {
-  compartment_id = var.compartment_id  # Existing Infrastructure
-  cidr_blocks    = var.vcn_cidr_blocks # Resource Owner: network_team
-  display_name   = var.vcn_display_name # User Input
-}
+#### Pattern 3: Resource Owner Parameters
+- **Approach**: Generate variables with placeholders and governance metadata
+- **Include**: Contact information, parameter descriptions, validation rules
+- **Output files**:
+  - `terraform.tfvars` with placeholders and comments
+  - `PARAMETERS.md` documenting resource owner requirements
+  - README with prerequisites and contact information
 
-resource "oci_core_subnet" "web_subnet" {
-  vcn_id         = oci_core_vcn.main.id  # Deployed Resource REFERENCE
-  compartment_id = oci_core_vcn.main.compartment_id # Deployed Resource REFERENCE
-  cidr_block     = var.subnet_cidr_block # Resource Owner: network_team
-  display_name   = var.subnet_display_name # User Input
-}
-```
+#### Pattern 4: User Input Parameters
+- **Approach**: Generate standard Terraform variables
+- **Include**: Type definitions, validation rules, default values (if applicable)
+- **Governance constraints**: Enforce via validation blocks when policies exist
 
-#### For Existing Infrastructure
+### 4. Parameter Collection Workflow (Conceptual Design)
 
-**Input**:
-```yaml
-deployment:
-  existing_infrastructure:
-    compartment_ocid: "ocid1.compartment.oc1..xxxxx"
-  resources:
-    - vcn: "new-vcn"
-```
+#### CLI Interactive Mode Concept
+- **Progressive prompts**: Step through parameters source-by-source
+- **Source-aware prompts**:
+  - Existing Infrastructure: Request OCID, validate resource exists
+  - Resource Owner: Show contact info, offer to create placeholder
+  - User Input: Standard prompt with validation
+- **Governance visibility**: Display when policy/governance applies
+- **Placeholder support**: Allow generation with placeholders for resource owner parameters
 
-**Generated Terraform**:
-```hcl
-# Data source for existing compartment
-data "oci_identity_compartment" "existing" {
-  id = var.existing_compartment_ocid
-}
+#### API Request Design Concept
+- **Structured payload**: Include source metadata for each parameter
+- **Validation**: Verify source correctness (don't accept user_input for governance-controlled parameters)
+- **Audit trail**: Track approval metadata for resource owner parameters (who, when)
+- **Governance enforcement**: API validates against policies before accepting request
 
-# New VCN referencing existing compartment
-resource "oci_core_vcn" "new_vcn" {
-  compartment_id = data.oci_identity_compartment.existing.id
-  cidr_blocks    = var.vcn_cidr_blocks
-  display_name   = var.vcn_display_name
-}
-```
-
-#### For Resource Owner Parameters
-
-**Generated Variables File** (`terraform.tfvars`):
-```hcl
-# Parameters requiring Resource Owner: network_team
-# Contact: network-team@company.com
-vcn_cidr_blocks = ["10.0.0.0/16"]  # PLACEHOLDER - Request from network_team
-subnet_cidr_block = "10.0.1.0/24"  # PLACEHOLDER - Request from network_team
-
-# Parameters requiring Resource Owner: security_team
-# Contact: security-team@company.com
-ssh_authorized_keys = ["ssh-rsa AAAAB3..."]  # PLACEHOLDER - Request from security_team
-
-# User Input parameters
-vcn_display_name = "Production VCN"
-subnet_display_name = "Web Tier Subnet"
-```
-
-**Generated README**:
-```markdown
-# Resource Owner Requirements
-
-Before deploying, obtain the following parameters from resource owners:
-
-## Network Team (network-team@company.com)
-- `vcn_cidr_blocks`: CIDR blocks for VCN (list of strings)
-- `subnet_cidr_block`: CIDR block for subnet (must be within VCN CIDR)
-
-## Security Team (security-team@company.com)
-- `ssh_authorized_keys`: SSH public keys for instance access
-- `bastion_allow_list`: Allowed source IPs for bastion access
-
-## Application Team (app-team@company.com)
-- `app_configuration`: Application-specific configuration map
-```
-
-### 4. Parameter Collection Workflow
-
-#### CLI Interactive Mode
-
-```
-$ cvm generate compute_instance
-
-Cloud Vending Machine - Resource Generation
-═══════════════════════════════════════════════
-
-Resource: compute_instance
-Dependencies detected: 12 resources
-
-Parameter Collection
-────────────────────
-
-[1/15] Compartment (Existing Infrastructure)
-  Enter compartment OCID: ocid1.compartment.oc1..xxxxx
-  ✓ Validated: Compartment exists
-
-[2/15] VCN CIDR Blocks (Resource Owner: network_team)
-  Contact: network-team@company.com
-  This parameter requires approval from network_team
-
-  Options:
-    1. Enter value now (if already obtained)
-    2. Generate placeholder and continue
-    3. Contact resource owner now
-
-  Choice: 2
-  ⚠ Placeholder created - update before terraform apply
-
-[3/15] Display Name (User Input)
-  Enter instance display name: web-server-01
-  ✓ Accepted
-
-...
-```
-
-#### API Request Format
-
-```json
-{
-  "resource": "compute_instance",
-  "parameters": {
-    "compartment_id": {
-      "source": "existing_infrastructure",
-      "value": "ocid1.compartment.oc1..xxxxx"
-    },
-    "vcn_cidr_blocks": {
-      "source": "resource_owner",
-      "owner": "network_team",
-      "value": ["10.0.0.0/16"],
-      "approved_by": "john.doe@company.com",
-      "approved_at": "2025-12-03T10:30:00Z"
-    },
-    "display_name": {
-      "source": "user_input",
-      "value": "web-server-01"
-    }
-  }
-}
-```
-
-#### Web UI Flow
-
-1. **Resource Selection**: User selects `compute_instance`
-2. **Dependency Analysis**: System shows dependency tree
-3. **Parameter Wizard**:
-   - Page 1: Existing Infrastructure (data source lookups)
-   - Page 2: Resource Owner Parameters (with contact info)
-   - Page 3: User Input Parameters (forms)
-   - Page 4: Review and Generate
-4. **Output**: Generated code + requirements document
+#### Web UI Flow Concept
+- **Multi-step wizard**: Separate pages for each source type
+- **Dependency visualization**: Show tree of resources being created
+- **Source-specific UX**:
+  - Existing Infrastructure: Resource picker with search/validation
+  - Resource Owner: Contact cards with parameter requirements
+  - User Input: Forms with real-time validation
+  - Governance: Read-only display of policy-enforced values
+- **Output packaging**: Generated Terraform + documentation + requirements list
 
 ---
 
