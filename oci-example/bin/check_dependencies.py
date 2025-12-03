@@ -195,7 +195,7 @@ def build_dependency_tree(
     
     return tree
 
-def print_dependencies(resource_name: str, mandatory: Set[str], optional: Set[str], resources: Dict, show_descriptions: bool = False, direct_only: bool = False, debug: bool = False, show_siblings: bool = False, show_kind: bool = False):
+def print_dependencies(resource_name: str, mandatory: Set[str], optional: Set[str], resources: Dict, show_descriptions: bool = False, direct_only: bool = False, debug: bool = False, show_siblings: bool = False, show_kind: bool = False, show_type: bool = False):
     """Print formatted dependency information in tree format."""
     print("═" * 70)
     print(f"Resource: {resource_name.upper()}")
@@ -415,7 +415,10 @@ def print_dependencies(resource_name: str, mandatory: Set[str], optional: Set[st
                 else:
                     trace_provides(item, visited)
         
-        # Trace from all direct deps
+        # First trace from the target resource itself (to capture what it provides)
+        trace_provides(resource_name, set())
+        
+        # Then trace from all direct deps
         for dep in direct_mandatory | direct_optional | direct_either_flat:
             trace_provides(dep, set())
         
@@ -454,7 +457,7 @@ def print_dependencies(resource_name: str, mandatory: Set[str], optional: Set[st
     if root_nodes:
         for i, root in enumerate(sorted(root_nodes)):
             is_last_root = (i == len(root_nodes) - 1)
-            target_printed = print_tree_node(resources, root, tree, depends_on, visited.copy(), "", is_last_root, False, resource_name, target_printed, longest_path, all_either_resources, show_descriptions, annotations, dependents_set, show_kind, requirement_sources)
+            target_printed = print_tree_node(resources, root, tree, depends_on, visited.copy(), "", is_last_root, False, resource_name, target_printed, longest_path, all_either_resources, show_descriptions, annotations, dependents_set, show_kind, show_type, requirement_sources)
     
     # Don't print target at root if it wasn't printed - it should be under its most specific parent
     # Only print at root if it truly has no dependencies (which shouldn't happen for compute_instance)
@@ -499,6 +502,7 @@ def print_tree_node(
     annotations: Dict[str, str] = None,
     dependents_set: Set[str] = None,
     show_kind: bool = False,
+    show_type: bool = False,
     requirement_sources: Dict = None
 ) -> bool:
     """Recursively print a tree node showing dependencies top to bottom. Returns True if target was printed."""
@@ -566,11 +570,18 @@ def print_tree_node(
         if kind:
             kind_suffix = f" [{kind}]"
     
+    # Build type suffix if requested
+    type_suffix = ""
+    if show_type:
+        res_type = resource.get('type', '')
+        if res_type:
+            type_suffix = f" <{res_type}>"
+    
     if show_descriptions:
         desc = resource.get('description', 'N/A')
-        print(f"{indent}{connector}{marker} {prefix}{resource_name:20s}{kind_suffix}{annotation} - {desc}")
+        print(f"{indent}{connector}{marker} {prefix}{resource_name:20s}{kind_suffix}{type_suffix}{annotation} - {desc}")
     else:
-        print(f"{indent}{connector}{marker} {prefix}{resource_name}{kind_suffix}{annotation}")
+        print(f"{indent}{connector}{marker} {prefix}{resource_name}{kind_suffix}{type_suffix}{annotation}")
     
     # Get children (what depends on this resource)
     children = depends_on.get(resource_name, [])
@@ -653,6 +664,16 @@ def print_tree_node(
         # Not a provided resource (or has other deps) - use normal logic
         if resource_name not in mandatory_deps:
             return False  # This resource is not even a dependency of the child
+        
+        # Check if another parent of the child is in the longest path to target
+        # If so, prefer that parent over this one
+        if longest_path and resource_name not in longest_path:
+            for other_parent in mandatory_deps:
+                if other_parent == resource_name:
+                    continue
+                if other_parent in longest_path and other_parent in tree:
+                    # other_parent is in the path to target, prefer it
+                    return False
         
         # Check if this resource is provided by another resource
         # If so, prefer non-provided siblings as parents for the child
@@ -746,8 +767,9 @@ def print_tree_node(
     # 1. Optional children NOT provided (top)
     # 2. Optional dependencies OF this resource
     # 3. ALL provided children (optional AND mandatory) - they belong to this resource
-    # 4. Mandatory children NOT provided (leads to target)
-    # 5. Target resource at very bottom
+    # 4. Mandatory children NOT provided, NOT in path to target
+    # 5. Mandatory children in path to target (leads to target)
+    # 6. Target resource at very bottom
     child_names = set(c for c, _ in mandatory_children + optional_children)
     def get_child_priority(child_tuple):
         child_name, is_opt = child_tuple
@@ -757,12 +779,16 @@ def print_tree_node(
         parents_among_siblings = sum(1 for dep in child_deps if dep in child_names)
         is_provided = child_name in resource_provides
         is_target_resource = (child_name == target)
+        is_in_path = longest_path and child_name in longest_path
         # Priority order:
         # 0 = optional NOT provided (top)
         # 1 = provided (both optional and mandatory) - belong to this resource
-        # 2 = mandatory NOT provided, NOT target (leads to target)
-        # 3 = target resource (very bottom)
+        # 2 = mandatory NOT provided, NOT in path to target
+        # 3 = mandatory in path to target (leads to target)
+        # 4 = target resource (very bottom)
         if is_target_resource:
+            group = 4
+        elif is_in_path and not is_opt:
             group = 3
         elif is_provided:
             group = 1
@@ -770,7 +796,7 @@ def print_tree_node(
             group = 0
         else:
             group = 2
-        return (group, parents_among_siblings, child_name not in (longest_path or []), child_name)
+        return (group, parents_among_siblings, child_name)
     
     mandatory_children.sort(key=get_child_priority)
     optional_children.sort(key=get_child_priority)
@@ -817,7 +843,7 @@ def print_tree_node(
     either_groups = tree.get(resource_name, {}).get('either', [])
     
     # Filter out children that are already visited (won't be printed)
-    # Also filter out children that will be shown under a sibling (more specific parent)
+    # Also filter out children that will be shown under a sibling (more specific parent or provider)
     def will_be_shown_under_sibling(child_name: str) -> bool:
         """Check if this child will be shown under a sibling instead of here."""
         child_deps = tree.get(child_name, {}).get('mandatory', [])
@@ -827,6 +853,10 @@ def print_tree_node(
                 continue
             # Is sibling a dependency of child? (sibling is more specific parent)
             if sibling in child_deps:
+                return True
+            # Does sibling provide this child? (child will be shown under sibling)
+            sibling_provides = resources.get(sibling, {}).get('provides', [])
+            if child_name in sibling_provides:
                 return True
         return False
     
@@ -838,7 +868,7 @@ def print_tree_node(
         # Check if there are either groups after this child
         has_either = len(either_groups) > 0
         is_last_child = (i == len(printable_children) - 1) and not has_either
-        target_printed = print_tree_node(resources, child, tree, depends_on, visited, new_indent, is_last_child, is_opt_child, target, target_printed, longest_path, either_resources, show_descriptions, annotations, dependents_set, show_kind, requirement_sources)
+        target_printed = print_tree_node(resources, child, tree, depends_on, visited, new_indent, is_last_child, is_opt_child, target, target_printed, longest_path, either_resources, show_descriptions, annotations, dependents_set, show_kind, show_type, requirement_sources)
     
     # Print "either" groups at the tail with 🔶 icon
     for group_idx, either_group in enumerate(either_groups):
@@ -850,18 +880,24 @@ def print_tree_node(
         for opt_idx, option in enumerate(either_group):
             is_last_opt = (opt_idx == len(either_group) - 1)
             opt_connector = "└── " if is_last_opt else "├── "
+            opt_resource = resources.get(option, {})
             # Add kind suffix if requested
             opt_kind_suffix = ""
             if show_kind:
-                opt_resource = resources.get(option, {})
                 opt_kind = opt_resource.get('kind', '')
                 if opt_kind:
                     opt_kind_suffix = f" [{opt_kind}]"
+            # Add type suffix if requested
+            opt_type_suffix = ""
+            if show_type:
+                opt_type = opt_resource.get('type', '')
+                if opt_type:
+                    opt_type_suffix = f" <{opt_type}>"
             # Add annotation if available
             opt_annotation = annotations.get(option, "")
             if opt_annotation:
                 opt_annotation = f" {opt_annotation}"
-            print(f"{group_indent}{opt_connector}{option}{opt_kind_suffix}{opt_annotation}")
+            print(f"{group_indent}{opt_connector}{option}{opt_kind_suffix}{opt_type_suffix}{opt_annotation}")
     
     return target_printed
 
@@ -916,6 +952,7 @@ def main():
         print("  --source               Show only source dependencies (annotate transitive)")
         print("  --siblings             Include dependents in tree (what depends on target)")
         print("  --kind                 Show resource kind (e.g., oci://resource, oci://module)")
+        print("  --type                 Show resource type (e.g., bin/terraform, config/yaml)")
         print("  --debug                Show debug info: why resources are hidden (use with --source)")
         print("\nExamples:")
         print("  ./bin/check_dependencies.py compute_instance")
@@ -939,7 +976,7 @@ def main():
         sys.exit(1)
     
     # Parse arguments: find resource name (first non-flag argument) and flags
-    known_flags = {'--with-descriptions', '-d', '--source', '--siblings', '--kind', '--debug'}
+    known_flags = {'--with-descriptions', '-d', '--source', '--siblings', '--kind', '--type', '--debug'}
     resource_name = None
     for arg in sys.argv[1:]:
         if arg not in known_flags:
@@ -955,6 +992,7 @@ def main():
     direct_only = '--source' in sys.argv
     show_siblings = '--siblings' in sys.argv
     show_kind = '--kind' in sys.argv
+    show_type = '--type' in sys.argv
     debug = '--debug' in sys.argv
     
     # Load YAML file
@@ -980,7 +1018,7 @@ def main():
     optional.discard(resource_name)
     
     # Print results
-    print_dependencies(resource_name, mandatory, optional, resources, show_descriptions, direct_only, debug, show_siblings, show_kind)
+    print_dependencies(resource_name, mandatory, optional, resources, show_descriptions, direct_only, debug, show_siblings, show_kind, show_type)
 
 if __name__ == '__main__':
     main()
