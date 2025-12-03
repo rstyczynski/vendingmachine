@@ -73,9 +73,9 @@ This analysis examines all 20 existing resources to establish sourcing patterns 
 
 **Characteristics**:
 - Simple values: strings, numbers, booleans
-- User-specific: display names, tags, descriptions
+- User-specific customization within governance constraints
 - May have defaults
-- Often optional (freeform_tags, defined_tags)
+- **Often governed by policy** (see Source Precedence below)
 
 **Design Requirements**:
 - Interactive prompts (CLI)
@@ -83,6 +83,268 @@ This analysis examines all 20 existing resources to establish sourcing patterns 
 - API request body (REST API)
 - Validation rules (regex, enum, min/max)
 - Default values
+- **Governance policy checking** (Resource Owner takes precedence)
+
+---
+
+## Parameter Source Precedence (Governance Model)
+
+**Critical Insight**: Many parameters have a **source hierarchy** where governance/policy takes precedence over user choice.
+
+### Source Precedence Pattern
+
+```yaml
+parameter:
+  source: choice
+  precedence:
+    1. resource_owner  # Primary: Check policy/governance first
+    2. user_input      # Fallback: User choice if no policy
+```
+
+### Governance-Controlled Parameters
+
+#### Display Names and Naming Conventions
+
+**Previous Understanding**: User Input
+**Governance Reality**: Resource Owner (Governance Authority) → User Input
+
+**Rationale**:
+- Organizations enforce naming conventions
+- Format: `{env}-{app}-{component}-{seq}` (e.g., `prod-webapp-fe-01`)
+- Governance team defines patterns
+- User provides values within constraints
+
+**Example Schema**:
+```yaml
+display_name:
+  source: choice
+  precedence:
+    - resource_owner:
+        owner: governance_team
+        type: naming_convention
+        pattern: "${environment}-${application}-${component}-${sequence}"
+        validation:
+          regex: "^(dev|test|prod)-[a-z0-9-]+-[a-z0-9-]+-[0-9]{2}$"
+    - user_input:
+        type: string
+        description: "Fallback: Free-form name if no convention defined"
+```
+
+**Code Generation**:
+```hcl
+# If governance policy exists:
+display_name = format("%s-%s-%s-%02d",
+  var.environment,    # Governed
+  var.application,    # Governed
+  var.component,      # User choice within app
+  var.sequence        # User choice
+)
+
+# If no policy:
+display_name = var.display_name  # Free user input
+```
+
+#### Tags and Metadata
+
+**Previous Understanding**: User Input (optional)
+**Governance Reality**: Resource Owner (Governance/Finance/Security) → User Input
+
+**Rationale**:
+- **Mandatory tags** for cost allocation (finance team)
+- **Security classification** tags (security team)
+- **Compliance** tags (compliance team)
+- User adds additional freeform tags within constraints
+
+**Example Schema**:
+```yaml
+tags:
+  source: composite
+  required_tags:
+    - key: CostCenter
+      source: resource_owner
+      owner: finance_team
+      required: true
+      validation:
+        enum: ["CC1001", "CC1002", "CC1003"]
+
+    - key: Environment
+      source: resource_owner
+      owner: governance_team
+      required: true
+      validation:
+        enum: ["Development", "Test", "Production"]
+
+    - key: SecurityClassification
+      source: resource_owner
+      owner: security_team
+      required: true
+      validation:
+        enum: ["Public", "Internal", "Confidential", "Restricted"]
+
+    - key: DataResidency
+      source: resource_owner
+      owner: compliance_team
+      required: true
+      validation:
+        enum: ["US", "EU", "APAC"]
+
+  optional_tags:
+    - source: user_input
+      description: "Additional freeform tags"
+      type: map(string)
+```
+
+**Code Generation**:
+```hcl
+freeform_tags = merge(
+  {
+    # Mandatory governance tags
+    "CostCenter"             = var.cost_center              # Governance
+    "Environment"            = var.environment              # Governance
+    "SecurityClassification" = var.security_classification  # Governance
+    "DataResidency"          = var.data_residency          # Governance
+  },
+  var.additional_tags  # User's optional tags
+)
+```
+
+#### Boolean Flags (Security/Policy)
+
+**Previous Understanding**: User Input
+**Governance Reality**: Resource Owner (Policy Team) → User Input
+
+**Rationale**:
+- Security policies dictate configurations
+- Compliance requirements override user preference
+- Cost optimization policies enforce settings
+- User choice only if no policy
+
+**Examples**:
+1. `assign_public_ip` - Security policy may prohibit public IPs
+2. `is_management_disabled` - Security policy may require management
+3. `enable_monitoring` - Operations policy may mandate monitoring
+4. `enable_backup` - Compliance policy may require backups
+
+**Example Schema**:
+```yaml
+assign_public_ip:
+  source: choice
+  precedence:
+    - resource_owner:
+        owner: security_team
+        policy: "no_public_ips_in_production"
+        value: false
+        condition: "environment == 'Production'"
+        rationale: "Security policy: Production workloads must not have public IPs"
+    - user_input:
+        type: boolean
+        default: false
+        description: "Assign public IP (allowed in non-production only)"
+```
+
+**Code Generation with Policy**:
+```hcl
+locals {
+  # Security policy: No public IPs in production
+  security_policy_no_public_ip = var.environment == "Production" ? false : null
+
+  # Final value: Policy takes precedence over user input
+  assign_public_ip = coalesce(
+    local.security_policy_no_public_ip,  # Policy first
+    var.user_assign_public_ip            # User choice if no policy
+  )
+}
+
+resource "oci_compute_instance" "app" {
+  create_vnic_details {
+    assign_public_ip = local.assign_public_ip
+  }
+}
+```
+
+#### Enums (Shapes, Regions) - Standardization
+
+**Previous Understanding**: User Input (free choice)
+**Governance Reality**: Resource Owner (Standardization/Platform Team) → User Input
+
+**Rationale**:
+- **Platform team** standardizes allowed instance shapes
+- **Cost optimization** restricts expensive shapes
+- **Data residency** policies restrict regions
+- **Compliance** may mandate specific configurations
+- User selects from approved list
+
+**Example: Instance Shapes**
+
+**Example Schema**:
+```yaml
+shape:
+  source: choice
+  precedence:
+    - resource_owner:
+        owner: platform_team
+        type: approved_list
+        values:
+          development:
+            - "VM.Standard.E4.Flex"
+            - "VM.Standard3.Flex"
+          production:
+            - "VM.Standard.E4.Flex"
+            - "VM.DenseIO.E4.Flex"
+          cost_optimized:
+            - "VM.Standard.A1.Flex"  # Ampere ARM - cheaper
+        rationale: "Standardized shapes for cost optimization and support"
+    - user_input:
+        type: enum
+        description: "Fallback: Any valid OCI shape if no standardization"
+        validation:
+          source: oci_api  # Query available shapes from OCI
+```
+
+**Code Generation**:
+```hcl
+variable "shape" {
+  type        = string
+  description = "Instance shape - must be from approved list"
+
+  validation {
+    condition     = contains(local.approved_shapes[var.environment], var.shape)
+    error_message = "Shape must be from platform team's approved list for ${var.environment}"
+  }
+}
+
+locals {
+  # Platform team approved shapes per environment
+  approved_shapes = {
+    development = ["VM.Standard.E4.Flex", "VM.Standard3.Flex"]
+    production  = ["VM.Standard.E4.Flex", "VM.DenseIO.E4.Flex"]
+  }
+}
+```
+
+**Example: Regions**
+
+**Example Schema**:
+```yaml
+region:
+  source: choice
+  precedence:
+    - resource_owner:
+        owner: compliance_team
+        type: data_residency_policy
+        allowed_regions:
+          us_data: ["us-ashburn-1", "us-phoenix-1"]
+          eu_data: ["eu-frankfurt-1", "eu-amsterdam-1"]
+          apac_data: ["ap-tokyo-1", "ap-sydney-1"]
+        policy: "data_residency_gdpr"
+        condition: "data_classification == 'EU_Personal_Data'"
+        rationale: "GDPR compliance requires EU data residency"
+    - user_input:
+        type: enum
+        description: "Select from allowed regions"
+        validation:
+          source: oci_api
+```
 
 ---
 
@@ -584,6 +846,7 @@ vcn:
 
 ```yaml
 resource_owners:
+  # Infrastructure Teams
   network_team:
     description: "Network infrastructure team"
     responsibilities:
@@ -602,12 +865,96 @@ resource_owners:
       - Security policies
       - Access control
       - SSH key management
+      - Security classification
     contact: "security-team@company.com"
     parameters:
       - nsg.security_rules
       - bastion.client_cidr_block_allow_list
       - compute_instance.ssh_authorized_keys
+      - compute_instance.assign_public_ip (policy)
+      - tags.SecurityClassification (mandatory)
 
+  platform_team:
+    description: "Platform engineering team"
+    responsibilities:
+      - Golden images
+      - Standard configurations
+      - Approved instance shapes
+      - Standardization
+    contact: "platform-team@company.com"
+    parameters:
+      - compute_instance.image_id (standardized)
+      - compute_instance.shape (approved list)
+
+  # Governance & Policy Teams
+  governance_team:
+    description: "IT governance and standards team"
+    responsibilities:
+      - Naming conventions
+      - Environment classification
+      - Resource tagging standards
+      - Policy enforcement
+    contact: "governance@company.com"
+    policies:
+      - naming_convention:
+          pattern: "${environment}-${application}-${component}-${seq}"
+          regex: "^(dev|test|prod)-[a-z0-9-]+-[a-z0-9-]+-[0-9]{2}$"
+      - environment_tags:
+          required: true
+          values: ["Development", "Test", "Production"]
+    parameters:
+      - *.display_name (convention)
+      - tags.Environment (mandatory)
+
+  finance_team:
+    description: "Finance and cost management"
+    responsibilities:
+      - Cost center allocation
+      - Budget tracking
+      - Cost tagging requirements
+    contact: "finance@company.com"
+    parameters:
+      - tags.CostCenter (mandatory)
+      - tags.BudgetCode (mandatory)
+      - tags.CostOwner (mandatory)
+
+  compliance_team:
+    description: "Regulatory compliance and data residency"
+    responsibilities:
+      - Data residency policies
+      - Regulatory compliance (GDPR, HIPAA, etc.)
+      - Region restrictions
+      - Backup policies
+    contact: "compliance@company.com"
+    policies:
+      - data_residency_gdpr:
+          condition: "data_classification == 'EU_Personal_Data'"
+          allowed_regions: ["eu-frankfurt-1", "eu-amsterdam-1"]
+      - backup_policy_hipaa:
+          condition: "data_classification == 'PHI'"
+          enable_backup: true
+          retention_days: 2555  # 7 years
+    parameters:
+      - region (policy-based restriction)
+      - tags.DataResidency (mandatory)
+      - *.enable_backup (policy)
+
+  operations_team:
+    description: "Operations and monitoring"
+    responsibilities:
+      - Monitoring policies
+      - Alerting standards
+      - Operational tags
+    contact: "operations@company.com"
+    policies:
+      - monitoring_required:
+          condition: "environment == 'Production'"
+          enable_monitoring: true
+    parameters:
+      - *.enable_monitoring (policy)
+      - tags.MonitoringTier (mandatory for production)
+
+  # Application Teams
   application_team:
     description: "Application development team"
     responsibilities:
@@ -619,17 +966,6 @@ resource_owners:
       - app.configuration
       - app_web.ansible_playbook
       - app_db.configuration
-
-  platform_team:
-    description: "Platform engineering team"
-    responsibilities:
-      - Golden images
-      - Standard configurations
-      - Compliance enforcement
-    contact: "platform-team@company.com"
-    parameters:
-      - compute_instance.image_id (optional)
-      - compute_instance.shape (standards)
 ```
 
 ### 3. Code Generation Strategy
@@ -869,14 +1205,84 @@ Parameter Collection
 
 ## Conclusion
 
-Parameter sourcing is a **first-class architectural concept** in Cloud Vending Machine, not an afterthought. The four-source taxonomy (Resource Owner, Deployed Resource, Existing Infrastructure, User Input) provides a comprehensive framework that:
+Parameter sourcing is a **first-class architectural concept** in Cloud Vending Machine, not an afterthought. The enhanced model with **source precedence** and **governance integration** provides a comprehensive framework that:
 
-1. **Reflects real-world operational reality** (teams, policies, governance)
-2. **Enables proper separation of concerns** (who owns what)
-3. **Supports security and compliance** (centralized key management, approved configurations)
-4. **Guides code generation strategy** (references vs data sources vs variables)
+### Core Concepts
 
-This analysis should inform the design of CVM-2 (Architecture), CVM-3 (Catalog), CVM-6 (Generator), and CVM-7 (Parameters).
+1. **Four-Source Taxonomy**:
+   - Resource Owner (Infrastructure + Governance teams)
+   - Deployed Resource (Terraform references)
+   - Existing Infrastructure (Data sources)
+   - User Input (Within policy constraints)
 
-**Status**: Analysis complete ✅
+2. **Source Precedence (Governance Model)**:
+   - **Policy takes precedence** over user choice
+   - Governance/compliance enforced at generation time
+   - User selects from approved options
+   - Validates real-world enterprise requirements
+
+3. **Expanded Resource Owner Types**:
+   - **Infrastructure Teams**: Network, Security, Platform, Application
+   - **Governance Teams**: Governance, Finance, Compliance, Operations
+   - Each with specific responsibilities and parameters
+
+### Enterprise Value
+
+1. **Reflects Real-World Operational Reality**:
+   - Teams with specific responsibilities
+   - Policies and governance enforced
+   - Compliance requirements automated
+
+2. **Enables Proper Separation of Concerns**:
+   - Who owns what is explicit
+   - Approval workflows built-in
+   - Contact information available
+
+3. **Supports Security and Compliance**:
+   - Centralized key management (security_team)
+   - Mandatory tags (finance_team, compliance_team)
+   - Policy enforcement (governance_team)
+   - Data residency compliance (compliance_team)
+
+4. **Guides Code Generation Strategy**:
+   - Deployed resources → Terraform references
+   - Existing infrastructure → Data sources
+   - Resource owner → Variables + validation + policy
+   - User input → Variables within constraints
+
+### Key Innovations
+
+1. **Source Precedence**: Not just "who provides" but "who decides"
+2. **Governance Integration**: Naming conventions, tags, policies enforced
+3. **Policy-Based Configuration**: Security/compliance policies in code
+4. **Mandatory vs Optional Tags**: Governance + user tags merged
+5. **Approved Lists**: Shapes, regions, images from standardization
+
+### Impact on Architecture
+
+This analysis fundamentally shapes:
+- **CVM-2 (Architecture)**: Governance as core concept, policy engine design
+- **CVM-3 (Catalog)**: Extended schema with precedence, policies
+- **CVM-6 (Generator)**: Policy evaluation, validation enforcement
+- **CVM-7 (Parameters)**: Source precedence in collection workflow
+- **CVM-9 (API)**: Policy API endpoints, governance integration
+- **CVM-10 (Web)**: UX for governed parameters, policy visibility
+
+### Implementation Complexity
+
+**Medium-High Complexity** (but essential for enterprise adoption):
+- Schema more complex (precedence, policies, conditions)
+- Code generation must evaluate policies
+- Parameter collection must check governance
+- Validation must enforce compliance
+- Documentation must explain policies
+
+**High Value** (justifies complexity):
+- Enterprise-ready from day one
+- Compliance built-in
+- Audit trail automatic
+- Governance scalable
+
+**Status**: Analysis complete with governance model ✅
 **Recommendation**: Incorporate into CVM-2 Elaboration phase design
+**Priority**: High - Governance is critical for enterprise adoption
