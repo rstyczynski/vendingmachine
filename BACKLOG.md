@@ -133,6 +133,7 @@ Design the overall system architecture for Cloud Vending Machine.
 * Module structure for Go implementation
 * Package organization: `pkg/dependencies`, `pkg/catalog`, `pkg/generator`, `pkg/validator`, `pkg/api`, `pkg/web`
 * YAML catalog schema (v2) with resource owner support
+* **Parameter Sourcing Model** (4-source taxonomy) ⭐
 * Terraform HCL output structure and organization
 * Interface definitions between components
 * Error handling and logging strategy
@@ -144,6 +145,31 @@ Design the overall system architecture for Cloud Vending Machine.
 * Plugin architecture for extensibility
 * State management (if any)
 * Concurrency model for code generation
+* **Parameter sourcing strategy** (Resource Owner, Deployed Resource, Existing Infrastructure, User Input) ⭐
+
+**Parameter Sourcing Design** (From Sprint 1 Analysis):
+
+Four-source taxonomy for resource arguments:
+1. **Resource Owner** - External authority (network team, security team, etc.)
+   - CIDR blocks, security policies, SSH keys, configurations
+   - Requires approval workflow and contact registry
+
+2. **Deployed Resource** - Created in current deployment round
+   - Terraform references: `${oci_core_vcn.main.id}`
+   - Automatic dependency ordering
+
+3. **Existing Infrastructure** - Already-deployed resources
+   - Terraform data sources: `data.oci_identity_compartment.existing`
+   - User provides OCIDs or filters
+
+4. **User Input** - Direct user-provided values
+   - Display names, tags, boolean flags, enums
+
+**Implications:**
+* Catalog schema must include sourcing metadata for each argument
+* Code generator must handle each source type differently
+* Parameter collection varies by source (prompts, lookups, placeholders)
+* Generated output includes resource owner requirements documentation
 
 **Artifacts:**
 
@@ -151,6 +177,8 @@ Design the overall system architecture for Cloud Vending Machine.
 * Component diagrams
 * Sequence diagrams for key workflows
 * API contracts between modules
+* **Parameter Sourcing Specification** ⭐
+* **Resource Owner Registry Schema** ⭐
 
 ### CVM-3. Implement Resource Catalog Management
 
